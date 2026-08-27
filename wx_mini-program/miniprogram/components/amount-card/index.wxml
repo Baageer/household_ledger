@@ -1,0 +1,4 @@
+<view class="amount-card">
+  <view class="label">{{label}}</view>
+  <view class="value {{tone}}">{{value}}</view>
+</view>

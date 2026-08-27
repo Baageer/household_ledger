@@ -1,0 +1,1 @@
+<view class="page login-page"><view class="brand">家庭记账</view><view class="subtitle">和家人一起，轻松管理每一笔收支</view><button class="primary-button" loading="{{loading}}" bindtap="login">微信登录</button><view class="muted tip">登录即表示同意服务与隐私条款</view></view>

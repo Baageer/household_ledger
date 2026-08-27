@@ -1,0 +1,39 @@
+{
+  "pages": [
+    "pages/auth/login/index",
+    "pages/family/select/index",
+    "pages/home/index",
+    "pages/transactions/index",
+    "pages/transactions/edit/index",
+    "pages/transactions/detail/index",
+    "pages/statistics/index",
+    "pages/profile/index",
+    "pages/family/members/index",
+    "pages/accounts/index",
+    "pages/categories/index",
+    "pages/budgets/index",
+    "pages/imports/index",
+    "pages/imports/review/index",
+    "pages/ai/parse/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "家庭记账",
+    "navigationBarBackgroundColor": "#f7f8fa",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f8fa",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#8a919f",
+    "selectedColor": "#2563eb",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/transactions/index", "text": "账单" },
+      { "pagePath": "pages/statistics/index", "text": "统计" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}

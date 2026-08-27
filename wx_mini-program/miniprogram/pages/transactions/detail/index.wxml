@@ -1,0 +1,1 @@
+<view class="page"><view class="card"><view class="title">交易详情</view><view class="muted">交易 ID：{{id}}</view></view></view>

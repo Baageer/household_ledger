@@ -1,0 +1,5 @@
+<view class="transaction-item" bindtap="onTap">
+  <view class="icon">{{item.type === 'income' ? '入' : item.type === 'transfer' ? '转' : '支'}}</view>
+  <view class="main"><view>{{item.merchant || item.description || '未命名交易'}}</view><view class="muted">{{item.category_name || item.type}}</view></view>
+  <view class="amount {{item.type}}">{{item.type === 'income' ? '+' : item.type === 'expense' ? '-' : ''}}¥{{item.amount}}</view>
+</view>

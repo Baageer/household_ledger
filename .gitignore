@@ -1,0 +1,56 @@
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Python environments and packaging output
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+
+# WeChat Mini Program / JavaScript dependencies and generated files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+miniprogram_npm/
+.wechatdevtools/
+*.wxss.map
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+
+# IDE and operating-system files
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs, local exports, and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.csv
+*.xlsx
+*.xls
+已分类账单.csv
+已导出账本.csv
