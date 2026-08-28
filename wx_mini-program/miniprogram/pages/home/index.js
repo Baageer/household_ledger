@@ -1,2 +1,22 @@
-const stats = require('../../services/statistics'); const { amount } = require('../../utils/format')
-Page({ data: { month: '', summary: {}, categoryRanking: [], budgets: [] }, onShow() { const app = getApp(); if (!app.globalData.token) return wx.redirectTo({ url: '/pages/auth/login/index' }); this.load() }, load() { const month = new Date().toISOString().slice(0, 7); this.setData({ month }); stats.home({ month }).then((data) => { const summary = data.summary || {}; ['income', 'expense', 'balance'].forEach((key) => { summary[key] = amount(summary[key]) }); const budgets = (data.budgets || []).map((item) => ({ ...item, usage_percent: Math.min(100, Number(item.usage_ratio || 0) * 100), usage_ratio: (Number(item.usage_ratio || 0) * 100).toFixed(0) })); this.setData({ summary, categoryRanking: data.category_ranking || [], budgets }) }).catch(() => wx.showToast({ title: '首页加载失败', icon: 'none' })) }, add() { wx.navigateTo({ url: '/pages/transactions/edit/index' }) } })
+const stats = require('../../services/statistics')
+const { amount } = require('../../utils/format')
+
+Page({
+  data: { month: '', summary: {}, categoryRanking: [], budgets: [], state: 'loading' },
+  onShow() {
+    const app = getApp()
+    if (!app.globalData.token) return wx.redirectTo({ url: '/pages/auth/login/index' })
+    this.load()
+  },
+  load() {
+    const month = new Date().toISOString().slice(0, 7)
+    this.setData({ month, state: 'loading' })
+    stats.home({ month }).then((data) => {
+      const summary = data.summary || {}
+      ;['income', 'expense', 'balance'].forEach((key) => { summary[key] = amount(summary[key]) })
+      const budgets = (data.budgets || []).map((item) => ({ ...item, usage_percent: Math.min(100, Number(item.usage_ratio || 0) * 100), usage_ratio: (Number(item.usage_ratio || 0) * 100).toFixed(0) }))
+      this.setData({ summary, categoryRanking: data.category_ranking || [], budgets, state: 'ready' })
+    }).catch(() => this.setData({ state: 'error' }))
+  },
+  add() { wx.navigateTo({ url: '/pages/transactions/edit/index' }) },
+})

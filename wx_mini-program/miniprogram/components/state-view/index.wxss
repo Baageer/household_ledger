@@ -1,0 +1,1 @@
+.state { color: #8a919f; text-align: center; padding: 72rpx 20rpx; }.state button { display: block; margin: 24rpx auto 0; }

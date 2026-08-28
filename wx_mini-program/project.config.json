@@ -34,7 +34,7 @@
     "minifyWXML": true
   },
   "condition": {},
-  "appid": "wx026f95682c186e49",
+  "appid": "touristappid",
   "libVersion": "3.17.2",
   "srcMiniprogramRoot": "miniprogram/",
   "packOptions": {

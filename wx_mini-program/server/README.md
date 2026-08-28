@@ -29,7 +29,21 @@ ledger.list_transactions(user.id, family.id, month="2026-08")
 
 当前采用进程内存储，用于固化业务规则和测试；后续接入 FastAPI、数据库和真实微信登录时保持领域接口不变。
 
+## FastAPI 联调
+
+最小 HTTP 应用位于 `main.py`，包含 `/health`、微信登录、家庭、账户、交易和统计首页接口。启动方式：
+
+```powershell
+Set-Location server
+$env:PYTHONPATH = "."
+D:\Anaconda3\envs\llm\python.exe -m uvicorn main:app --reload
+```
+
+服务使用进程内存储，仅用于本地联调；重启后数据会清空。登录接口返回的 `token` 和 `currentFamilyId` 可直接写入小程序会话。
+
 前端页面位于 `../miniprogram`，使用微信开发者工具打开 `wx_mini-program` 目录即可预览。部署联调前，将 `miniprogram/app.js` 中的 `apiBaseUrl` 替换为实际 HTTPS API 地址。
+
+如果登录页点击后无法跳转，请先启动本地 API，并在开发者工具中勾选“**不校验合法域名**”。本机开发环境使用 `http://127.0.0.1:8000`；真机调试时需改为同一局域网内可访问的 HTTPS 地址。
 
 ```powershell
 Set-Location server
