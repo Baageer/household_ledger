@@ -17,6 +17,32 @@ from .transactions import TransactionService, _money
 
 TASK_STATUSES = ("uploaded", "parsing", "parsed", "reviewing", "completed", "failed")
 
+COLUMN_ALIASES = {
+    "time": ("交易时间", "交易日期", "时间", "日期", "交易时间(本地)", "date", "datetime", "time"),
+    "merchant": ("交易对方", "对方", "商户", "商户名称", "交易名称", "商品说明", "摘要", "description", "merchant"),
+    "amount": ("金额", "金额(元)", "交易金额", "发生金额", "amount", "money"),
+    "direction": ("收/支", "收支", "收支类型", "交易类型", "方向", "direction", "type"),
+    "account": ("账户", "支付方式", "支付渠道", "资金账户", "account"),
+    "source_id": ("交易单号", "交易号", "流水号", "订单号", "交易ID", "transaction_id", "id"),
+    "description": ("备注", "描述", "商品说明", "摘要", "description", "note"),
+}
+
+@dataclass(frozen=True)
+class CategoryRule:
+    category: str
+    keywords: tuple[str, ...]
+
+
+DEFAULT_RULES = (
+    CategoryRule("餐饮", ("美团", "外卖", "饿了么", "星巴克", "餐厅", "火锅", "肯德基", "麦当劳")),
+    CategoryRule("交通", ("滴滴", "打车", "地铁", "公交", "加油", "高德", "出租车")),
+    CategoryRule("购物", ("淘宝", "天猫", "京东", "拼多多", "购物", "盒马", "山姆")),
+    CategoryRule("住房", ("房租", "房贷", "物业", "水电")),
+    CategoryRule("娱乐", ("电影", "游戏", "旅游", "演出")),
+    CategoryRule("医疗", ("医院", "药房", "医疗")),
+    CategoryRule("教育", ("学费", "培训", "教育")),
+)
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -123,7 +149,7 @@ class ImportService:
         for row in rows:
             if row.status in ("confirmed", "skipped"):
                 continue
-            if row.error_reason or row.duplicate:
+            if row.error_reason or row.duplicate or row.direction == "neutral":
                 row.status = "skipped"
                 continue
             try:
@@ -163,8 +189,11 @@ class ImportService:
             for encoding in ("utf-8-sig", "gb18030", "gbk"):
                 try:
                     text = path.read_text(encoding=encoding)
-                    break
-                except UnicodeDecodeError:
+                    lines = text.splitlines()
+                    header = next((i for i, line in enumerate(lines) if self._header_score(next(csv.reader([line]))) >= 2), None)
+                    if header is not None:
+                        return pd.read_csv(io.StringIO(text), header=header, dtype=str, skip_blank_lines=False)
+                except (UnicodeDecodeError, pd.errors.ParserError, StopIteration):
                     continue
             if text is None:
                 raise FamilyError("无法识别 CSV 编码")
@@ -172,7 +201,7 @@ class ImportService:
             header = next((i for i, line in enumerate(lines) if self._header_score(next(csv.reader([line]))) >= 2), None)
             if header is None:
                 raise FamilyError("未找到账单表头")
-            return pd.read_csv(io.StringIO(text), header=header, dtype=str)
+            return pd.read_csv(io.StringIO(text), header=header, dtype=str, skip_blank_lines=False)
         raw = pd.read_excel(path, header=None)
         header = next((i for i in raw.index if self._header_score(raw.loc[i].tolist()) >= 2), None)
         if header is None:
@@ -190,25 +219,31 @@ class ImportService:
             "description": ("备注", "描述", "商品说明", "description", "note"),
         }
         columns = {self._clean(column): column for column in frame.columns}
-        selected = {key: next((columns[self._clean(alias)] for alias in values if self._clean(alias) in columns), None) for key, values in aliases.items()}
+        selected = {key: self._find_column(list(frame.columns), values) for key, values in COLUMN_ALIASES.items()}
         if any(selected[key] is None for key in ("time", "merchant", "amount")):
             raise FamilyError("账单缺少日期、商户或金额列")
         for index, raw in frame.iterrows():
             values = raw.to_dict()
             row = ImportTransaction(_id("imptx"), task.id, int(index) + 1, values)
-            row.merchant = str(raw[selected["merchant"]] or "").strip()
-            row.description = str(raw[selected["description"]] or "").strip() if selected["description"] else ""
+            merchant = raw[selected["merchant"]]
+            row.merchant = "" if pd.isna(merchant) else str(merchant).strip()
+            description = raw[selected["description"]] if selected["description"] else ""
+            row.description = "" if pd.isna(description) else str(description).strip()
             row.account_id = task.account_id
             row.source_transaction_id = str(raw[selected["source_id"]]).strip() if selected["source_id"] and pd.notna(raw[selected["source_id"]]) else None
             try:
                 row.transaction_time = pd.to_datetime(raw[selected["time"]]).to_pydatetime()
+                if row.transaction_time.tzinfo is None:
+                    row.transaction_time = row.transaction_time.replace(tzinfo=timezone.utc)
                 signed_amount = self._parse_amount(raw[selected["amount"]])
                 row.amount = abs(signed_amount)
-                direction_text = str(raw[selected["direction"]] or "") if selected["direction"] else ""
+                direction_value = raw[selected["direction"]] if selected["direction"] else ""
+                direction_text = "" if pd.isna(direction_value) else str(direction_value)
                 row.direction = self._direction(direction_text, signed_amount)
                 row.transaction_hash = self.transaction_service._transaction_hash(task.family_id, task.source, task.account_id or "", row.transaction_time, row.amount, self.transaction_service.normalize_merchant(row.merchant))
                 row.duplicate = self._is_duplicate(task, row)
-                row.confidence = 0.95 if row.direction in ("income", "expense", "transfer") else 0.2
+                category, row.confidence = self._classify(row.merchant, row.description, row.direction)
+                row.category_id = self._category_id(task.family_id, category)
                 if row.duplicate:
                     row.status = "duplicate"
                     task.duplicate_count += 1
@@ -218,6 +253,40 @@ class ImportService:
                 task.error_count += 1
             self.rows[row.id] = row
         task.total_count = len([row for row in self.rows.values() if row.import_task_id == task.id])
+
+    @classmethod
+    def _find_column(cls, columns: List[object], aliases: object) -> Optional[object]:
+        normalized = {cls._clean(column): column for column in columns}
+        names = [cls._clean(alias) for alias in aliases]
+        for alias in names:
+            if alias in normalized:
+                return normalized[alias]
+        for column in columns:
+            name = cls._clean(column)
+            if any(alias in name or name in alias for alias in names):
+                return column
+        return None
+
+    def _classify(self, merchant: str, description: str, direction: str) -> tuple[str, float]:
+        if direction == "transfer":
+            return "转账", 1.0
+        if direction == "neutral":
+            return "不计收支", 1.0
+        if direction == "income":
+            if "退款" in merchant or "退款" in description:
+                return "退款", 0.99
+            return "收入-其他", 0.60
+        text = f"{merchant} {description}".lower()
+        for rule in DEFAULT_RULES:
+            if any(keyword.lower() in text for keyword in rule.keywords):
+                return rule.category, 0.95
+        return "其他", 0.20
+
+    def _category_id(self, family_id: str, category_name: str) -> Optional[str]:
+        for category in self.transaction_service.categories.values():
+            if category.status == "active" and category.family_id in ("*", family_id) and category.name == category_name:
+                return category.id
+        return None
 
     def _is_duplicate(self, task: ImportTask, row: ImportTransaction) -> bool:
         for existing in self.rows.values():
@@ -250,6 +319,10 @@ class ImportService:
     @staticmethod
     def _direction(value: str, amount: object) -> str:
         text = value.lower()
+        if any(token in text for token in ("不计收支", "中性交易", "neutral")):
+            return "neutral"
+        if any(token in text for token in ("转入转出", "转入", "转出")):
+            return "transfer"
         if any(token in text for token in ("转账", "transfer")):
             return "transfer"
         if any(token in text for token in ("收入", "退款", "收款", "credit", "in")):

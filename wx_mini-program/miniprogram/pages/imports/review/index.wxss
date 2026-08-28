@@ -1,1 +1,1 @@
-/* pages/imports/review/index.wxss */
+.summary{margin-top:20rpx}.row{display:flex;justify-content:space-between}.row-main{flex:1}.row-actions{color:#2563eb}.danger{margin-top:8rpx;font-size:24rpx}.primary-button{margin-top:24rpx}

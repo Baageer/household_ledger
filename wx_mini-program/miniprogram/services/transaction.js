@@ -4,4 +4,5 @@ module.exports = {
   create: (data) => request({ url: '/transactions', method: 'POST', data }),
   update: (id, data) => request({ url: `/transactions/${id}`, method: 'PUT', data }),
   remove: (id) => request({ url: `/transactions/${id}`, method: 'DELETE' }),
+  get: (id) => request({ url: `/transactions/${id}` }),
 }

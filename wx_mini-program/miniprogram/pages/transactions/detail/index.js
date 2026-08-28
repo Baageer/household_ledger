@@ -1,1 +1,2 @@
-Page({ data: { id: '' }, onLoad(options) { this.setData({ id: options.id || '' }) } })
+const transaction = require('../../../services/transaction')
+Page({ data: { item: null, id: '' }, onLoad(options) { this.setData({ id: options.id || '' }); this.load(options.id) }, load(id) { transaction.get(id).then((item) => this.setData({ item })) }, remove() { wx.showModal({ title: '删除账单', content: '确定删除这笔账单？', success: (r) => { if (r.confirm) transaction.remove(this.data.id).then(() => { wx.showToast({ title: '已删除' }); setTimeout(() => wx.navigateBack(), 400) }) } }) } })

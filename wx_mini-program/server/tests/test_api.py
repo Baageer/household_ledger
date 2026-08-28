@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -54,3 +56,21 @@ def test_family_header_and_invalid_account_are_rejected(client):
     response = client.post("/transactions", headers=headers, json={"type": "expense", "amount": "1", "account_id": "missing"})
     assert response.status_code == 422
     assert client.get("/accounts", headers={"Authorization": headers["Authorization"]}).status_code == 400
+
+
+def test_alipay_import_serializes_missing_csv_cells(client):
+    session = login(client)
+    headers = {"Authorization": f"Bearer {session['token']}"}
+    family = client.post("/families", headers=headers, json={"name": "瀹跺涵"}).json()
+    headers["X-Family-Id"] = family["id"]
+    account = client.post("/accounts", headers=headers, json={"name": "支付宝", "type": "alipay"}).json()
+    csv_text = "说明\n\n交易时间,交易对方,收/支,金额,交易单号,备注,\n2026-08-01 09:00,淘宝,支出,12.50,order-1,\n"
+    payload = {
+        "filename": "alipay.csv",
+        "source": "alipay",
+        "account_id": account["id"],
+        "content": base64.b64encode(csv_text.encode("gb18030")).decode("ascii"),
+    }
+    response = client.post("/imports", headers=headers, json=payload)
+    assert response.status_code == 200
+    assert response.json()["status"] == "reviewing"

@@ -1,1 +1,8 @@
-<view class="page"><view class="title">家庭成员</view><view class="card muted">成员管理页面正在接入接口</view></view>
+<view class="page">
+  <view class="toolbar"><view class="title">家庭成员</view><button wx:if="{{canManage}}" class="small-button" bindtap="invite">邀请成员</button></view>
+  <view wx:if="{{!loading && !members.length}}" class="card muted">还没有家庭成员</view>
+  <view wx:for="{{members}}" wx:key="id" class="card member-row">
+    <view class="member-main"><view class="member-name">{{item.display_name}}</view><view class="muted">{{item.user.openid || item.user_id}}</view></view>
+    <view class="member-actions"><text class="role {{item.status === 'disabled' ? 'disabled' : ''}}">{{item.role}} · {{item.status === 'active' ? '正常' : '已停用'}}</text><view wx:if="{{canManage && item.role !== 'owner' && item.status === 'active'}}" class="actions"><text bindtap="changeRole" data-item="{{item}}">角色</text><text class="danger" bindtap="disable" data-item="{{item}}">停用</text></view></view>
+  </view>
+</view>

@@ -1,0 +1,1 @@
+<picker range="{{families}}" range-key="name" bindchange="choose"><view class="switcher">切换家庭 ›</view></picker>

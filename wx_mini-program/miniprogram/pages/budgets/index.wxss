@@ -1,1 +1,1 @@
-/* pages/budgets/index.wxss */
+.toolbar,.row{display:flex;align-items:center;justify-content:space-between}.toolbar{margin-bottom:24rpx}.small-button{margin:0;padding:0 24rpx;height:68rpx;line-height:68rpx;color:#2563eb;background:#eaf1ff}.row{margin-bottom:16rpx}

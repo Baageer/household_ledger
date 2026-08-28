@@ -1,1 +1,1 @@
-/* pages/imports/index.wxss */
+.field{display:flex;justify-content:space-between;padding:24rpx 0;border-bottom:1rpx solid #eef0f4}.field picker{color:#2563eb}.file-picker{margin-top:28rpx;padding:34rpx;text-align:center;border:2rpx dashed #b7c8ef;border-radius:16rpx;color:#2563eb}.hint{margin-top:18rpx;font-size:24rpx}.primary-button{margin-top:24rpx}

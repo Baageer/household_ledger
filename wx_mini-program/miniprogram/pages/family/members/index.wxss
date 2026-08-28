@@ -1,1 +1,4 @@
-/* pages/family/members/index.wxss */
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
+.small-button { margin: 0; padding: 0 24rpx; height: 68rpx; line-height: 68rpx; font-size: 26rpx; color: #2563eb; background: #eaf1ff; }
+.member-row { display: flex; justify-content: space-between; align-items: center; }
+.member-main { min-width: 0; }.member-name { font-size: 32rpx; font-weight: 600; margin-bottom: 8rpx; }.member-actions { text-align: right; }.role { color: #2563eb; font-size: 24rpx; }.role.disabled { color: #8a919f; }.actions { display: flex; gap: 24rpx; margin-top: 14rpx; color: #2563eb; font-size: 24rpx; }

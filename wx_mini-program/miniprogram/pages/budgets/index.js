@@ -1,1 +1,2 @@
-Page({})
+const stats = require('../../services/statistics'); const { request } = require('../../services/api')
+Page({ data: { budgets: [], categories: [], month: '' }, onShow() { const month = new Date().toISOString().slice(0,7); this.setData({ month }); Promise.all([stats.budgets({ month }), request({ url: '/categories' })]).then(([budgets,categories]) => this.setData({ budgets, categories })) }, add() { wx.showModal({ title: '预算金额', editable: true, success: (r) => { const category = this.data.categories[0]; if (r.confirm && category) stats.create({ category_id: category.id, amount: r.content }).then(() => this.onShow()) } }) } })

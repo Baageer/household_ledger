@@ -1,1 +1,2 @@
-Page({})
+const { request } = require('../../services/api')
+Page({ data: { categories: [] }, onShow() { this.load() }, load() { request({ url: '/categories' }).then((categories) => this.setData({ categories })) }, add() { wx.showModal({ title: '新增分类', editable: true, success: (r) => { if (r.confirm && r.content.trim()) request({ url: '/categories', method: 'POST', data: { name: r.content.trim() } }).then(() => this.load()) } }) }, remove(e) { wx.showModal({ title: '删除分类', content: '确定删除该分类？', success: (r) => { if (r.confirm) request({ url: `/categories/${e.currentTarget.dataset.id}`, method: 'DELETE' }).then(() => this.load()) } }) } })
