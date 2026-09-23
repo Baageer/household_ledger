@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="家账家庭记账 Web 端财务概览" />
+    <title>家账 · 家庭财务概览</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="主导航">
+        <a class="brand" href="#overview" aria-label="家账首页">
+          <span class="brand-mark">家</span>
+          <span>家账</span>
+        </a>
+
+        <nav class="nav-list">
+          <a class="nav-item active" href="#overview" data-page="财务概览"><span class="nav-icon">⌂</span>财务概览</a>
+          <a class="nav-item" href="#transactions" data-page="全部账单"><span class="nav-icon">▤</span>全部账单</a>
+          <a class="nav-item" href="#analytics" data-page="收支统计"><span class="nav-icon">◔</span>收支统计</a>
+          <a class="nav-item" href="#budgets" data-page="预算管理"><span class="nav-icon">◒</span>预算管理</a>
+          <a class="nav-item" href="#imports" data-page="账单导入"><span class="nav-icon">⇪</span>账单导入</a>
+        </nav>
+
+        <div class="sidebar-divider"></div>
+        <p class="nav-caption">家庭空间</p>
+        <nav class="nav-list compact">
+          <a class="nav-item" href="#family" data-page="家庭成员"><span class="nav-icon">♧</span>家庭成员</a>
+          <a class="nav-item" href="#accounts" data-page="账户管理"><span class="nav-icon">▣</span>账户管理</a>
+          <a class="nav-item" href="#settings" data-page="偏好设置"><span class="nav-icon">⚙</span>偏好设置</a>
+        </nav>
+
+        <div class="sidebar-help">
+          <span class="help-icon">✦</span>
+          <div><strong>让账目更轻松</strong><p>导入账单，自动整理收支</p></div>
+          <a href="#imports" class="text-link">去导入 →</a>
+        </div>
+        <div class="account-card">
+          <span class="avatar avatar-small">林</span>
+          <div><strong>林先生</strong><span>家庭管理员</span></div>
+          <button class="icon-button" aria-label="账户菜单">•••</button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <button class="mobile-menu" aria-label="打开导航">☰</button>
+          <div class="page-heading"><p>家庭总览</p><h1 id="page-title">财务概览</h1></div>
+          <div class="topbar-actions">
+            <label class="select-control month-control"><span>◷</span><select id="month-select" aria-label="选择月份"><option>2026年8月</option><option>2026年7月</option><option>2026年6月</option></select></label>
+            <label class="select-control family-control"><span class="avatar avatar-tiny">家</span><select id="family-select" aria-label="选择家庭"><option>我们的小家</option><option>父母家</option></select></label>
+            <button class="notification" aria-label="查看通知">♢<i></i></button>
+          </div>
+        </header>
+
+        <section class="welcome-row" id="overview">
+          <div><p class="eyebrow">2026年8月 · 账期进行中</p><h2>早上好，林先生 <span>☀</span></h2><p class="subtle">八月已经过去 23 天，继续保持清晰的家庭财务习惯。</p></div>
+          <div class="primary-actions"><button class="button button-secondary" id="import-button"><span>⇪</span> 导入账单</button><button class="button button-primary" id="add-transaction"><span>＋</span> 记一笔</button></div>
+        </section>
+
+        <section class="summary-grid" aria-label="本月收支摘要">
+          <article class="summary-card balance-card"><div class="card-top"><span>本月结余</span><span class="trend up">↗ 12.6%</span></div><strong>¥15,740.00</strong><p>比上月多结余 <b>¥1,760</b></p><div class="balance-shape"></div></article>
+          <article class="summary-card"><div class="card-top"><span>本月收入</span><span class="metric-icon income-icon">↓</span></div><strong>¥28,600.00</strong><p><span class="trend up">↗ 8.2%</span> 较上月</p><div class="mini-bars income-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+          <article class="summary-card"><div class="card-top"><span>本月支出</span><span class="metric-icon expense-icon">↑</span></div><strong>¥12,860.00</strong><p><span class="trend down">↘ 4.5%</span> 较上月</p><div class="mini-bars expense-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+          <article class="summary-card"><div class="card-top"><span>预算使用</span><span class="metric-icon budget-icon">◒</span></div><strong>68.5<small>%</small></strong><p>本月预算还剩 <b>¥5,890</b></p><div class="progress-track"><i style="width:68.5%"></i></div></article>
+        </section>
+
+        <section class="content-grid">
+          <article class="panel trend-panel" id="analytics">
+            <div class="panel-heading"><div><h3>收支趋势</h3><p>本月每日收入与支出变化</p></div><div class="segmented" role="group" aria-label="趋势维度"><button class="active">日</button><button>周</button><button>月</button></div></div>
+            <div class="chart-legend"><span><i class="legend income-dot"></i>收入</span><span><i class="legend expense-dot"></i>支出</span></div>
+            <div class="line-chart" aria-label="收入与支出趋势图">
+              <div class="chart-axis"><span>30k</span><span>20k</span><span>10k</span><span>0</span></div>
+              <svg viewBox="0 0 680 228" role="img" aria-label="八月收入支出折线图" preserveAspectRatio="none"><defs><linearGradient id="incomeFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#2f7c69" stop-opacity=".18"/><stop offset="100%" stop-color="#2f7c69" stop-opacity="0"/></linearGradient></defs><g class="grid-lines"><line x1="0" y1="16" x2="680" y2="16"/><line x1="0" y1="82" x2="680" y2="82"/><line x1="0" y1="148" x2="680" y2="148"/><line x1="0" y1="214" x2="680" y2="214"/></g><path d="M0 142 C29 139,37 114,61 128 S99 114,122 116 S162 135,184 108 S220 114,245 99 S286 132,309 114 S341 80,370 90 S410 108,432 82 S470 97,493 69 S528 80,555 45 S595 60,618 54 S650 35,680 47 L680 214 L0 214 Z" fill="url(#incomeFill)"/><path class="income-line" d="M0 142 C29 139,37 114,61 128 S99 114,122 116 S162 135,184 108 S220 114,245 99 S286 132,309 114 S341 80,370 90 S410 108,432 82 S470 97,493 69 S528 80,555 45 S595 60,618 54 S650 35,680 47"/><path class="expense-line" d="M0 174 C28 166,39 178,62 166 S102 154,123 164 S161 143,184 152 S220 140,246 150 S278 124,308 143 S339 134,369 145 S402 127,432 134 S470 111,493 123 S526 132,555 106 S589 117,618 94 S652 115,680 85"/><circle class="active-point" cx="555" cy="45" r="5"/></svg>
+              <div class="chart-labels"><span>8/01</span><span>8/05</span><span>8/10</span><span>8/15</span><span>8/20</span><span>8/25</span><span>8/31</span></div>
+            </div>
+          </article>
+
+          <article class="panel category-panel"><div class="panel-heading"><div><h3>支出分类</h3><p>本月支出占比</p></div><button class="text-button">查看全部 →</button></div><div class="category-ring"><div class="ring"><div><strong>¥12,860</strong><span>总支出</span></div></div><div class="category-key"><p><i class="key-dot key-1"></i><span>餐饮</span><b>¥3,620</b><em>28.1%</em></p><p><i class="key-dot key-2"></i><span>住房</span><b>¥3,100</b><em>24.1%</em></p><p><i class="key-dot key-3"></i><span>购物</span><b>¥2,180</b><em>17.0%</em></p><p><i class="key-dot key-4"></i><span>其他</span><b>¥3,960</b><em>30.8%</em></p></div></div></article>
+        </section>
+
+        <section class="lower-grid">
+          <article class="panel transactions-panel" id="transactions"><div class="panel-heading"><div><h3>最近账单</h3><p>最近发生的家庭收支</p></div><button class="text-button">查看全部 →</button></div><div class="transaction-list" id="transaction-list"><div class="transaction"><span class="transaction-icon food">♨</span><div class="transaction-name"><strong>盒马鲜生</strong><span>餐饮 · 微信支付</span></div><time>今天 10:24</time><b class="amount expense-amount">- ¥168.00</b><button class="more-button" aria-label="盒马鲜生更多操作">•••</button></div><div class="transaction"><span class="transaction-icon transport">◉</span><div class="transaction-name"><strong>滴滴出行</strong><span>交通 · 支付宝</span></div><time>昨天 20:46</time><b class="amount expense-amount">- ¥36.50</b><button class="more-button" aria-label="滴滴出行更多操作">•••</button></div><div class="transaction"><span class="transaction-icon salary">¥</span><div class="transaction-name"><strong>工资入账</strong><span>工资 · 招商银行</span></div><time>8月21日 09:00</time><b class="amount income-amount">+ ¥14,300.00</b><button class="more-button" aria-label="工资入账更多操作">•••</button></div><div class="transaction"><span class="transaction-icon shopping">◈</span><div class="transaction-name"><strong>山姆会员商店</strong><span>购物 · 招商银行</span></div><time>8月20日 16:18</time><b class="amount expense-amount">- ¥428.00</b><button class="more-button" aria-label="山姆会员商店更多操作">•••</button></div></div></article>
+
+          <article class="panel budget-panel" id="budgets"><div class="panel-heading"><div><h3>本月预算</h3><p>4 个分类正在跟踪</p></div><button class="text-button">管理 →</button></div><div class="budget-list"><div class="budget-item"><div><span class="budget-name"><i class="category-symbol food-symbol">♨</i>餐饮</span><b>¥2,580 <em>/ ¥3,000</em></b></div><div class="budget-progress"><i style="width:86%"></i></div><p>已使用 86% <span>剩余 ¥420</span></p></div><div class="budget-item"><div><span class="budget-name"><i class="category-symbol shopping-symbol">◈</i>购物</span><b>¥2,180 <em>/ ¥2,500</em></b></div><div class="budget-progress warning"><i style="width:87%"></i></div><p>已使用 87% <span>剩余 ¥320</span></p></div><div class="budget-item"><div><span class="budget-name"><i class="category-symbol home-symbol">⌂</i>住房</span><b>¥3,100 <em>/ ¥4,500</em></b></div><div class="budget-progress"><i style="width:69%"></i></div><p>已使用 69% <span>剩余 ¥1,400</span></p></div></div></article>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="transaction-modal" aria-hidden="true">
+      <section class="transaction-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <header><div><p class="eyebrow">快速记账</p><h2 id="modal-title">添加一笔收支</h2></div><button class="close-modal" aria-label="关闭">×</button></header>
+        <form id="transaction-form"><div class="type-switch"><label><input type="radio" name="type" value="expense" checked /><span>支出</span></label><label><input type="radio" name="type" value="income" /><span>收入</span></label><label><input type="radio" name="type" value="transfer" /><span>转账</span></label></div><label class="form-field amount-field">金额<input id="amount-input" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required /></label><div class="form-grid"><label class="form-field">分类<select name="category"><option>餐饮</option><option>购物</option><option>交通</option><option>住房</option><option>工资</option></select></label><label class="form-field">账户<select name="account"><option>微信支付</option><option>支付宝</option><option>招商银行</option><option>现金</option></select></label></div><label class="form-field">备注<input name="merchant" type="text" maxlength="40" placeholder="如：午餐、超市购物" /></label><button class="button button-primary submit-button" type="submit">保存账目</button></form>
+      </section>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite">已添加到本月账单</div>
+    <script src="app.js"></script>
+  </body>
+</html>

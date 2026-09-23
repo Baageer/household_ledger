@@ -1,3 +1,6 @@
 fastapi>=0.100
 uvicorn[standard]>=0.23
 pydantic>=2.0
+SQLAlchemy>=2.0
+psycopg[binary]>=3.1
+alembic>=1.13

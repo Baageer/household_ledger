@@ -16,6 +16,8 @@ from .family import (
 from .transactions import Category, Transaction, TransactionService, TRANSACTION_TYPES
 from .statistics import Budget, StatisticsService
 from .imports import ImportService, ImportTask, ImportTransaction
+from .database import Database, Base
+from .repository import LedgerRepository
 
 __all__ = [
     "ACCOUNT_TYPES", "ROLES", "Account", "AuthenticationError", "Family",
@@ -24,4 +26,6 @@ __all__ = [
     "Category", "Transaction", "TransactionService", "TRANSACTION_TYPES",
     "Budget", "StatisticsService",
     "ImportService", "ImportTask", "ImportTransaction",
+    "Database", "Base",
+    "LedgerRepository",
 ]

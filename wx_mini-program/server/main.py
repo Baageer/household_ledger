@@ -9,6 +9,7 @@ from typing import Optional
 from uuid import uuid4
 import base64
 import tempfile
+import os
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,8 @@ from ledger.family import FamilyService, PermissionDenied
 from ledger.statistics import StatisticsService
 from ledger.transactions import TransactionService
 from ledger.imports import ImportService
+from ledger.database import Database
+from ledger.repository import LedgerRepository
 
 app = FastAPI(title="Household Ledger API", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -26,7 +29,31 @@ families = FamilyService(openid_resolver=lambda code: {"openid": f"dev-{code}"})
 transactions = TransactionService(families)
 statistics = StatisticsService(families, transactions)
 imports = ImportService(families, transactions)
+database = Database()
+repository = LedgerRepository(database)
 sessions: dict[str, str] = {}
+
+
+@app.on_event("startup")
+def initialize_database() -> None:
+    if database.configured and os.getenv("AUTO_CREATE_DB", "false").lower() in ("1", "true", "yes"):
+        database.create_schema()
+    if database.configured:
+        try:
+            repository.restore(families, transactions, statistics, imports)
+        except Exception as error:
+            raise RuntimeError("Unable to restore ledger state from PostgreSQL") from error
+
+
+@app.middleware("http")
+async def persist_domain_state(request, call_next):
+    response = await call_next(request)
+    if database.configured:
+        try:
+            repository.flush(families, transactions, statistics, imports)
+        except Exception as error:
+            raise RuntimeError("Unable to persist ledger state to PostgreSQL") from error
+    return response
 
 
 class LoginRequest(BaseModel):
@@ -120,7 +147,24 @@ def domain_error(error: Exception) -> HTTPException:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "household-ledger"}
+    result = {"status": "ok", "service": "household-ledger", "database": "not_configured"}
+    if database.configured:
+        try:
+            result["database"] = "ok" if database.check() else "unavailable"
+        except Exception:
+            result["database"] = "error"
+    return result
+
+
+@app.get("/health/database")
+def database_health():
+    if not database.configured:
+        return {"configured": False, "status": "not_configured"}
+    try:
+        database.check()
+        return {"configured": True, "status": "ok"}
+    except Exception:
+        return {"configured": True, "status": "error"}
 
 
 @app.post("/auth/wechat-login")

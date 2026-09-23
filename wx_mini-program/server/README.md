@@ -27,7 +27,34 @@ transaction = ledger.create_transaction(
 ledger.list_transactions(user.id, family.id, month="2026-08")
 ```
 
-当前采用进程内存储，用于固化业务规则和测试；后续接入 FastAPI、数据库和真实微信登录时保持领域接口不变。
+当前领域服务仍支持进程内存模式，用于本地测试；生产环境可通过 `DATABASE_URL` 启用 PostgreSQL 数据层。
+
+## PostgreSQL
+
+安装依赖后，在 `server` 目录配置连接串并创建数据库 schema：
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://ledger:secret@localhost:5432/ledger"
+D:\Anaconda3\envs\llm\python.exe -m pip install -r requirements.txt
+D:\Anaconda3\envs\llm\python.exe create_database.py
+```
+
+生产环境建议先使用 Alembic 创建 schema，再启动 API：
+
+```powershell
+D:\Anaconda3\envs\llm\python.exe -m alembic upgrade head
+```
+
+本地联调也可以设置 `AUTO_CREATE_DB=true`，在启动阶段自动创建缺失表：
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://ledger:secret@localhost:5432/ledger"
+$env:AUTO_CREATE_DB = "true"
+$env:PYTHONPATH = "."
+D:\Anaconda3\envs\llm\python.exe -m uvicorn main:app
+```
+
+`GET /health` 会返回 `database` 状态：`not_configured`、`ok` 或 `error`；`GET /health/database` 提供独立数据库探活。表模型位于 `ledger/database.py`，覆盖用户、家庭、成员、账户、分类、交易、预算、导入任务、导入明细、会话和审计日志。`LedgerRepository` 在服务启动时恢复领域状态，并在请求完成后将领域对象同步到数据库；金额使用 `NUMERIC(18,2)`，导入原始行使用 PostgreSQL `JSONB`，交易 hash 和导入任务具备幂等约束。
 
 ## FastAPI 联调
 
