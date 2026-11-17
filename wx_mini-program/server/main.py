@@ -43,6 +43,7 @@ def initialize_database() -> None:
             repository.restore(families, transactions, statistics, imports)
         except Exception as error:
             raise RuntimeError("Unable to restore ledger state from PostgreSQL") from error
+    imports.backfill_transaction_categories()
 
 
 @app.middleware("http")
@@ -94,6 +95,13 @@ class TransactionRequest(BaseModel):
     transaction_time: Optional[datetime] = None
     transfer_to_account_id: Optional[str] = None
 
+class TransactionUpdateRequest(BaseModel):
+    amount: Optional[str] = None
+    category_id: Optional[str] = None
+    merchant: Optional[str] = None
+    description: Optional[str] = None
+    transaction_time: Optional[datetime] = None
+
 class CategoryRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     parent_id: Optional[str] = None
@@ -123,6 +131,17 @@ def jsonable(value):
     if isinstance(value, float) and not math.isfinite(value):
         return None
     return value
+
+
+def transaction_payload(transaction):
+    payload = asdict(transaction)
+    account = families.accounts.get(transaction.account_id)
+    transfer_to_account = families.accounts.get(transaction.transfer_to_account_id) if transaction.transfer_to_account_id else None
+    category = transactions.categories.get(transaction.category_id) if transaction.category_id else None
+    payload["account_name"] = account.name if account else None
+    payload["transfer_to_account_name"] = transfer_to_account.name if transfer_to_account else None
+    payload["category_name"] = category.name if category else None
+    return jsonable(payload)
 
 
 def current_user(authorization: Optional[str] = Header(default=None)) -> str:
@@ -269,7 +288,12 @@ def disable_account(account_id: str, user_id: str = Depends(current_user), curre
 @app.get("/transactions")
 def list_transactions(month: Optional[str] = Query(default=None), page: int = 1, page_size: int = 20, user_id: str = Depends(current_user), current_family: str = Depends(family_id)):
     try:
-        return jsonable(transactions.list_transactions(user_id, current_family, month, page, page_size))
+        result = transactions.list_transactions(user_id, current_family, month, page, page_size)
+        return {
+            **jsonable({key: value for key, value in result.items() if key not in ("items", "groups")}),
+            "items": [transaction_payload(item) for item in result["items"]],
+            "groups": {date: [transaction_payload(item) for item in items] for date, items in result["groups"].items()},
+        }
     except Exception as error:
         raise domain_error(error)
 
@@ -277,19 +301,19 @@ def list_transactions(month: Optional[str] = Query(default=None), page: int = 1,
 @app.post("/transactions")
 def create_transaction(payload: TransactionRequest, user_id: str = Depends(current_user), current_family: str = Depends(family_id)):
     try:
-        return jsonable(transactions.create_transaction(user_id, current_family, payload.type, payload.amount, payload.account_id, payload.category_id, payload.member_id, payload.merchant, payload.description, payload.transaction_time, payload.transfer_to_account_id))
+        return transaction_payload(transactions.create_transaction(user_id, current_family, payload.type, payload.amount, payload.account_id, payload.category_id, payload.member_id, payload.merchant, payload.description, payload.transaction_time, payload.transfer_to_account_id))
     except Exception as error:
         raise domain_error(error)
 
 @app.get("/transactions/{transaction_id}")
 def get_transaction(transaction_id: str, user_id: str = Depends(current_user), current_family: str = Depends(family_id)):
     try:
-        return jsonable(transactions._require_transaction(transaction_id, current_family))
+        return transaction_payload(transactions._require_transaction(transaction_id, current_family))
     except Exception as error: raise domain_error(error)
 
 @app.put("/transactions/{transaction_id}")
-def update_transaction(transaction_id: str, payload: TransactionRequest, user_id: str = Depends(current_user), current_family: str = Depends(family_id)):
-    try: return jsonable(transactions.update_transaction(user_id, current_family, transaction_id, amount=payload.amount, category_id=payload.category_id, merchant=payload.merchant, description=payload.description, transaction_time=payload.transaction_time))
+def update_transaction(transaction_id: str, payload: TransactionUpdateRequest, user_id: str = Depends(current_user), current_family: str = Depends(family_id)):
+    try: return transaction_payload(transactions.update_transaction(user_id, current_family, transaction_id, **payload.model_dump(exclude_unset=True)))
     except Exception as error: raise domain_error(error)
 
 @app.delete("/transactions/{transaction_id}")

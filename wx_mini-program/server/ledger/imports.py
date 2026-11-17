@@ -82,6 +82,7 @@ class ImportTransaction:
     amount: Optional[object] = None
     direction: str = ""
     account_id: Optional[str] = None
+    transfer_to_account_id: Optional[str] = None
     category_id: Optional[str] = None
     description: str = ""
     source_transaction_id: Optional[str] = None
@@ -156,7 +157,7 @@ class ImportService:
                 transaction = self.transaction_service.create_transaction(
                     actor_user_id, task.family_id, row.direction, row.amount, row.account_id or task.account_id or "",
                     category_id=row.category_id, merchant=row.merchant, description=row.description,
-                    transaction_time=row.transaction_time, source=task.source,
+                    transaction_time=row.transaction_time, transfer_to_account_id=row.transfer_to_account_id, source=task.source,
                     source_transaction_id=row.source_transaction_id, confidence=row.confidence,
                 )
                 row.transaction_id = transaction.id
@@ -182,6 +183,18 @@ class ImportService:
         task.error_count = 0
         task.status = "reviewing"
         return task
+
+    def backfill_transaction_categories(self) -> int:
+        updated = 0
+        for transaction in self.transaction_service.transactions.values():
+            if transaction.category_id is not None or transaction.source not in ("alipay", "wechat") or transaction.type == "transfer":
+                continue
+            category_name, _ = self._classify(transaction.merchant, transaction.description, transaction.type)
+            category_id = self._category_id(transaction.family_id, category_name)
+            if category_id:
+                transaction.category_id = category_id
+                updated += 1
+        return updated
 
     def _read_file(self, path: Path, source: str) -> pd.DataFrame:
         if path.suffix.lower() == ".csv":
@@ -239,8 +252,18 @@ class ImportService:
                 row.amount = abs(signed_amount)
                 direction_value = raw[selected["direction"]] if selected["direction"] else ""
                 direction_text = "" if pd.isna(direction_value) else str(direction_value)
-                row.direction = self._direction(direction_text, signed_amount)
-                row.transaction_hash = self.transaction_service._transaction_hash(task.family_id, task.source, task.account_id or "", row.transaction_time, row.amount, self.transaction_service.normalize_merchant(row.merchant))
+                transfer_flow = self._transfer_flow(direction_text, signed_amount)
+                matched_account_id = self._match_transfer_account(task.family_id, task.account_id, row.merchant, row.description) if transfer_flow else None
+                if matched_account_id and task.account_id:
+                    row.direction = "transfer"
+                    if transfer_flow == "in":
+                        row.account_id = matched_account_id
+                        row.transfer_to_account_id = task.account_id
+                    else:
+                        row.transfer_to_account_id = matched_account_id
+                else:
+                    row.direction = self._direction(direction_text, signed_amount)
+                row.transaction_hash = self.transaction_service._transaction_hash(task.family_id, task.source, row.account_id or task.account_id or "", row.transaction_time, row.amount, self.transaction_service.normalize_merchant(row.merchant))
                 row.duplicate = self._is_duplicate(task, row)
                 category, row.confidence = self._classify(row.merchant, row.description, row.direction)
                 row.category_id = self._category_id(task.family_id, category)
@@ -306,6 +329,18 @@ class ImportService:
             for transaction in self.transaction_service.transactions.values()
         )
 
+    def _match_transfer_account(self, family_id: str, current_account_id: Optional[str], merchant: str, description: str) -> Optional[str]:
+        text = self._clean(f"{merchant} {description}")
+        matches = [
+            account for account in self.family_service.accounts.values()
+            if account.family_id == family_id
+            and account.status == "active"
+            and account.id != current_account_id
+            and self._clean(account.name)
+            and self._clean(account.name) in text
+        ]
+        return max(matches, key=lambda account: len(self._clean(account.name))).id if matches else None
+
     @staticmethod
     def _clean(value: object) -> str:
         return "".join(str(value).split()).lower()
@@ -321,15 +356,27 @@ class ImportService:
         text = value.lower()
         if any(token in text for token in ("不计收支", "中性交易", "neutral")):
             return "neutral"
-        if any(token in text for token in ("转入转出", "转入", "转出")):
-            return "transfer"
-        if any(token in text for token in ("转账", "transfer")):
-            return "transfer"
+        transfer_flow = ImportService._transfer_flow(value, amount)
+        if transfer_flow:
+            return "income" if transfer_flow == "in" else "expense"
         if any(token in text for token in ("收入", "退款", "收款", "credit", "in")):
             return "income"
         if any(token in text for token in ("支出", "消费", "付款", "debit", "out")):
             return "expense"
         return "expense" if Decimal(str(amount)) < 0 else "income"
+
+    @staticmethod
+    def _transfer_flow(value: str, amount: object) -> Optional[str]:
+        text = value.lower().replace(" ", "")
+        has_in = "转入" in text or "transferin" in text
+        has_out = "转出" in text or "transferout" in text
+        if has_in and not has_out:
+            return "in"
+        if has_out and not has_in:
+            return "out"
+        if has_in or has_out or "转账" in text or "transfer" in text:
+            return "out" if Decimal(str(amount)) < 0 else "in"
+        return None
 
     @staticmethod
     def _parse_amount(value: object):

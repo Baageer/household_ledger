@@ -54,3 +54,8 @@ desktop.ini
 *.xls
 已分类账单.csv
 已导出账本.csv
+
+project.private.config.json
+scripts.txt
+
+docs/*

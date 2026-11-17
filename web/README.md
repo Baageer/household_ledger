@@ -1,6 +1,6 @@
 # 家账 Web 前端原型
 
-这是基于产品文档和微信小程序现有页面整理的响应式 Web 仪表盘原型，覆盖家庭财务概览、收支趋势、分类占比、最近账单与预算使用情况。
+这是基于产品文档和微信小程序现有页面整理的零依赖响应式 Web MVP，覆盖家庭财务概览、账单、统计、预算、家庭成员、账户和账单导入入口。
 
 ## 预览
 
@@ -8,11 +8,13 @@
 
 ## 当前交互
 
-- 月份、家庭和侧边导航状态切换
-- 收支趋势按日/周/月切换反馈
-- 快速记账弹窗及新增账单行
-- 账单导入入口提示
+- 月份、家庭和侧边导航状态切换，支持桌面/移动端布局
+- 财务概览、账单、统计、预算、成员、账户、设置和导入页面切换
+- 快速记账弹窗：无 API 会写入演示列表，连接 API 后调用 `POST /transactions`
+- 设置页保存 API 地址、开发登录并保存 token 与家庭 ID
+- 连接 API 后加载概览、账单、成员、账户和导入任务
+- 导入页要求选择 `支付宝` 或 `微信支付` 来源；文件名包含“支付宝/alipay”或“微信/wechat”时会自动选择来源
 
 ## API 对接建议
 
-页面应优先对接 `wx_mini-program/server/main.py` 中的 `/statistics/home`、`/statistics/trend`、`/statistics/category`、`/transactions` 与 `/budgets` 接口。请求需携带 `Authorization: Bearer <token>` 和 `X-Family-Id`，以保持与小程序端一致的家庭上下文。
+页面通过 `api.js` 统一请求。设置页可修改 API 地址，默认值为 `http://127.0.0.1:8000`。请求自动携带 `Authorization: Bearer <token>` 和 `X-Family-Id`，以保持与小程序端一致的家庭上下文。导入请求的 `source` 只发送后端支持的 `alipay` 或 `wechat`，避免 422。后端当前使用 `POST /auth/wechat-login` 作为开发登录入口，生产 Web 登录方案仍需后端补充。

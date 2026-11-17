@@ -97,7 +97,32 @@
         <form id="transaction-form"><div class="type-switch"><label><input type="radio" name="type" value="expense" checked /><span>支出</span></label><label><input type="radio" name="type" value="income" /><span>收入</span></label><label><input type="radio" name="type" value="transfer" /><span>转账</span></label></div><label class="form-field amount-field">金额<input id="amount-input" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required /></label><div class="form-grid"><label class="form-field">分类<select name="category"><option>餐饮</option><option>购物</option><option>交通</option><option>住房</option><option>工资</option></select></label><label class="form-field">账户<select name="account"><option>微信支付</option><option>支付宝</option><option>招商银行</option><option>现金</option></select></label></div><label class="form-field">备注<input name="merchant" type="text" maxlength="40" placeholder="如：午餐、超市购物" /></label><button class="button button-primary submit-button" type="submit">保存账目</button></form>
       </section>
     </div>
+    <div class="modal-backdrop" id="category-edit-modal" aria-hidden="true">
+      <section class="transaction-modal" role="dialog" aria-modal="true" aria-labelledby="category-edit-title">
+        <header><div><p class="eyebrow">账单分类</p><h2 id="category-edit-title">修改分类</h2></div><button class="close-category-modal" type="button" aria-label="关闭">×</button></header>
+        <form id="category-edit-form" class="category-edit-form"><p class="subtle" id="category-edit-summary"></p><label class="form-field">分类<select name="category_id" required></select></label><button class="button button-primary submit-button" type="submit">保存分类</button></form>
+      </section>
+    </div>
     <div class="toast" id="toast" role="status" aria-live="polite">已添加到本月账单</div>
+    <div class="modal-backdrop" id="budget-create-modal" aria-hidden="true">
+      <section class="transaction-modal budget-create-modal" role="dialog" aria-modal="true" aria-labelledby="budget-create-title">
+        <header><div><p class="eyebrow">预算管理</p><h2 id="budget-create-title">新建预算</h2></div><button class="close-budget-create-modal" type="button" aria-label="关闭">×</button></header>
+        <form id="budget-create-form">
+          <label class="form-field">预算类型<select id="budget-create-category" required></select></label>
+          <label class="form-field budget-amount-field">预算金额<input id="budget-create-amount" type="number" min="0.01" step="0.01" placeholder="请输入金额" required /></label>
+          <button class="button button-primary submit-button" type="submit">保存预算</button>
+        </form>
+      </section>
+    </div>
+    <div class="modal-backdrop" id="budget-action-modal" aria-hidden="true">
+      <section class="transaction-modal budget-action-modal" role="dialog" aria-modal="true" aria-labelledby="budget-action-title">
+        <header><div><p class="eyebrow">预算管理</p><h2 id="budget-action-title">编辑预算</h2></div><button class="close-budget-modal" type="button" aria-label="关闭">×</button></header>
+        <p class="subtle" id="budget-action-summary"></p>
+        <label class="form-field budget-amount-field">预算金额<input id="budget-action-amount" type="number" min="0.01" step="0.01" required /></label>
+        <div class="budget-dialog-actions"><button class="button button-secondary" type="button" data-budget-action="delete">删除预算</button><button class="button button-primary" type="button" data-budget-action="save">保存修改</button></div>
+      </section>
+    </div>
+    <script src="api.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

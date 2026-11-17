@@ -82,7 +82,7 @@ class TransactionService:
         self._seed_system_categories()
 
     def _seed_system_categories(self) -> None:
-        for name in ("餐饮", "交通", "购物", "住房", "娱乐", "医疗", "教育"):
+        for name in ("餐饮", "交通", "购物", "住房", "娱乐", "医疗", "教育", "其他", "收入-其他", "退款"):
             category = Category(_id("cat"), "*", name, system=True)
             self.categories[category.id] = category
 

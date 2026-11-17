@@ -41,8 +41,20 @@ def test_family_account_transaction_and_statistics_flow(client):
     headers["X-Family-Id"] = family["id"]
     account = client.post("/accounts", headers=headers, json={"name": "现金", "type": "cash", "initial_balance": "100.00"})
     assert account.status_code == 200
-    transaction = client.post("/transactions", headers=headers, json={"type": "expense", "amount": "12.50", "account_id": account.json()["id"], "merchant": "早餐"})
+    transaction = client.post("/transactions", headers=headers, json={"type": "expense", "amount": "12.50", "account_id": account.json()["id"], "merchant": "早餐", "transaction_time": "2026-08-01T08:00:00+00:00"})
     assert transaction.status_code == 200
+    assert transaction.json()["account_name"] == "现金"
+    listed = client.get("/transactions", headers=headers)
+    assert listed.json()["items"][0]["account_name"] == "现金"
+    assert listed.json()["groups"][next(iter(listed.json()["groups"]))][0]["account_name"] == "现金"
+    shopping = next(item for item in client.get("/categories", headers=headers).json() if item["name"] == "购物")
+    updated = client.put(f"/transactions/{transaction.json()['id']}", headers=headers, json={"category_id": shopping["id"]})
+    assert updated.status_code == 200
+    assert updated.json()["category_name"] == "购物"
+    target = client.post("/accounts", headers=headers, json={"name": "银行卡", "type": "bank"}).json()
+    transfer = client.post("/transactions", headers=headers, json={"type": "transfer", "amount": "20", "account_id": account.json()["id"], "transfer_to_account_id": target["id"]})
+    assert transfer.json()["account_name"] == "现金"
+    assert transfer.json()["transfer_to_account_name"] == "银行卡"
     summary = client.get("/statistics/monthly?month=2026-08", headers=headers)
     assert summary.status_code == 200
     assert summary.json()["expense"] == "12.50"
@@ -74,3 +86,8 @@ def test_alipay_import_serializes_missing_csv_cells(client):
     response = client.post("/imports", headers=headers, json=payload)
     assert response.status_code == 200
     assert response.json()["status"] == "reviewing"
+    confirmed = client.post(f"/imports/{response.json()['id']}/confirm", headers=headers, json={})
+    assert confirmed.json()["status"] == "completed"
+    items = client.get("/transactions?month=2026-08", headers=headers).json()["items"]
+    assert items[0]["category_name"] == "购物"
+    assert items[0]["account_name"] == "支付宝"
