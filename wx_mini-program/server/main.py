@@ -1,8 +1,9 @@
-"""FastAPI 最小联调服务，使用进程内领域服务存储数据。"""
+"""FastAPI 最小联调服务，默认进程内存储，配置 DATABASE_URL 后持久化。"""
 
 from dataclasses import asdict, is_dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import hashlib
 import math
 from pathlib import Path
 from typing import Optional
@@ -32,6 +33,12 @@ imports = ImportService(families, transactions)
 database = Database()
 repository = LedgerRepository(database)
 sessions: dict[str, str] = {}
+session_expiry: dict[str, datetime] = {}
+SESSION_TTL = timedelta(days=30)
+
+
+def session_key(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 @app.on_event("startup")
@@ -40,9 +47,9 @@ def initialize_database() -> None:
         database.create_schema()
     if database.configured:
         try:
-            repository.restore(families, transactions, statistics, imports)
+            repository.restore(families, transactions, statistics, imports, sessions=sessions, session_expiry=session_expiry)
         except Exception as error:
-            raise RuntimeError("Unable to restore ledger state from PostgreSQL") from error
+            raise RuntimeError("Unable to restore ledger state from database") from error
     imports.backfill_transaction_categories()
 
 
@@ -51,9 +58,9 @@ async def persist_domain_state(request, call_next):
     response = await call_next(request)
     if database.configured:
         try:
-            repository.flush(families, transactions, statistics, imports)
+            repository.flush(families, transactions, statistics, imports, sessions=sessions, session_expiry=session_expiry)
         except Exception as error:
-            raise RuntimeError("Unable to persist ledger state to PostgreSQL") from error
+            raise RuntimeError("Unable to persist ledger state to database") from error
     return response
 
 
@@ -146,8 +153,12 @@ def transaction_payload(transaction):
 
 def current_user(authorization: Optional[str] = Header(default=None)) -> str:
     token = authorization.removeprefix("Bearer ").strip() if authorization else ""
-    user_id = sessions.get(token)
-    if not user_id:
+    key = session_key(token)
+    user_id = sessions.get(key)
+    expires_at = session_expiry.get(key)
+    if not token or not user_id or not expires_at or expires_at <= datetime.now(timezone.utc):
+        sessions.pop(key, None)
+        session_expiry.pop(key, None)
         raise HTTPException(status_code=401, detail="登录已失效")
     return user_id
 
@@ -191,7 +202,9 @@ def wechat_login(payload: LoginRequest):
     try:
         user = families.wechat_login(payload.code, payload.nickname, payload.avatar)
         token = uuid4().hex
-        sessions[token] = user.id
+        key = session_key(token)
+        sessions[key] = user.id
+        session_expiry[key] = datetime.now(timezone.utc) + SESSION_TTL
         user_families = families.list_families(user.id)
         current = user_families[0].id if user_families else None
         return jsonable({"token": token, "user": user, "families": user_families, "currentFamilyId": current})
@@ -396,7 +409,9 @@ def update_import_row(task_id: str, row_id: str, payload: ImportRowUpdate, user_
         if payload.merchant is not None: row.merchant = payload.merchant.strip()
         if payload.amount is not None: row.amount = abs(imports._parse_amount(payload.amount))
         if payload.description is not None: row.description = payload.description.strip()
-        if payload.category_id is not None: row.category_id = payload.category_id
+        if payload.category_id is not None:
+            row.category_id = payload.category_id
+            transactions.learn_category_rule(task.family_id, row.merchant, payload.category_id)
         if row.error_reason and row.amount and row.merchant: row.error_reason = None; row.status = "pending"
         return jsonable(row)
     except Exception as error: raise domain_error(error)

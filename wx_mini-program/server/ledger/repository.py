@@ -9,14 +9,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
 from sqlalchemy import select
 
 from .database import (
     AccountModel, AuditLogModel, BudgetModel, CategoryModel, Database,
     FamilyMemberModel, FamilyModel, ImportTaskModel, ImportTransactionModel,
-    SessionModel, TransactionModel, UserModel,
+    MerchantCategoryRuleModel, SessionModel, TransactionModel, UserModel,
 )
 from .family import Account, Family, FamilyMember, Invitation, User
 from .imports import ImportTask, ImportTransaction
@@ -38,7 +39,7 @@ class LedgerRepository:
     def __init__(self, database: Database):
         self.database = database
 
-    def restore(self, families: Any, transactions: Any, statistics: Any, imports: Any) -> None:
+    def restore(self, families: Any, transactions: Any, statistics: Any, imports: Any, sessions: Optional[dict] = None, session_expiry: Optional[dict] = None) -> None:
         if not self.database.configured:
             return
         with self.database.session_factory() as session:
@@ -51,8 +52,13 @@ class LedgerRepository:
                 families.members[item.id] = FamilyMember(item.id, item.family_id, item.user_id, item.role, item.nickname, item.status, item.created_at)
             for item in session.scalars(select(AccountModel)):
                 families.accounts[item.id] = Account(item.id, item.family_id, item.owner_id, item.name, item.type, item.currency, item.initial_balance, item.status, item.created_at, item.updated_at)
-            for item in session.scalars(select(CategoryModel)):
-                transactions.categories[item.id] = Category(item.id, item.family_id, item.name, item.parent_id, item.system, item.status, item.created_at)
+            persisted_categories = list(session.scalars(select(CategoryModel)))
+            if persisted_categories:
+                transactions.categories.clear()
+                for item in persisted_categories:
+                    transactions.categories[item.id] = Category(item.id, item.family_id, item.name, item.parent_id, item.system, item.status, item.created_at)
+            for item in session.scalars(select(MerchantCategoryRuleModel)):
+                transactions.category_rules.setdefault(item.family_id, {})[item.normalized_merchant] = item.category_id
             for item in session.scalars(select(TransactionModel)):
                 transactions.transactions[item.id] = Transaction(item.id, item.family_id, item.account_id, item.member_id, item.type, item.amount, item.category_id, item.merchant, item.description, item.transaction_time, item.source, item.transfer_to_account_id, item.source_transaction_id, item.transaction_hash, item.normalized_merchant, item.linked_transaction_id, item.raw_data_ref, item.created_by, item.confidence, item.status, item.created_at, item.updated_at)
             for item in session.scalars(select(BudgetModel)):
@@ -69,8 +75,15 @@ class LedgerRepository:
                     confidence=float(item.confidence or 0), status=item.status,
                     error_reason=item.error_reason, transaction_id=item.transaction_id,
                 )
+            if sessions is not None and session_expiry is not None:
+                now = datetime.now(timezone.utc)
+                for item in session.scalars(select(SessionModel)):
+                    expires_at = item.expires_at if item.expires_at.tzinfo else item.expires_at.replace(tzinfo=timezone.utc)
+                    if expires_at > now:
+                        sessions[item.token_hash] = item.user_id
+                        session_expiry[item.token_hash] = expires_at
 
-    def flush(self, families: Any, transactions: Any, statistics: Any, imports: Any) -> None:
+    def flush(self, families: Any, transactions: Any, statistics: Any, imports: Any, sessions: Optional[dict] = None, session_expiry: Optional[dict] = None) -> None:
         if not self.database.configured:
             return
         with self.database.session_factory() as session:
@@ -79,10 +92,20 @@ class LedgerRepository:
             for item in families.members.values(): session.merge(FamilyMemberModel(**asdict(item)))
             for item in families.accounts.values(): session.merge(AccountModel(**asdict(item)))
             for item in transactions.categories.values(): session.merge(CategoryModel(**asdict(item)))
+            for family_id, rules in transactions.category_rules.items():
+                for merchant, category_id in rules.items():
+                    session.merge(MerchantCategoryRuleModel(
+                        family_id=family_id, normalized_merchant=merchant, category_id=category_id,
+                        updated_at=datetime.now(timezone.utc),
+                    ))
             for item in transactions.transactions.values(): session.merge(TransactionModel(**asdict(item)))
             for item in statistics.budgets.values(): session.merge(BudgetModel(**asdict(item)))
             for item in imports.tasks.values(): session.merge(ImportTaskModel(**asdict(item)))
             for item in imports.rows.values():
                 data = _clean(asdict(item))
                 session.merge(ImportTransactionModel(**data))
+            for token_hash, user_id in (sessions or {}).items():
+                expires_at = (session_expiry or {}).get(token_hash)
+                if expires_at:
+                    session.merge(SessionModel(token_hash=token_hash, user_id=user_id, expires_at=expires_at))
             session.commit()

@@ -145,20 +145,53 @@ class StatisticsService:
                 continue
             used = used_by_category[budget.category_id]
             remaining = budget.amount - used
+            category = self.transaction_service.categories.get(budget.category_id)
             result.append({
                 "id": budget.id, "category_id": budget.category_id,
+                "category": category.name if category else "未分类",
                 "budget": budget.amount, "used": used, "remaining": remaining,
                 "usage_ratio": (used / budget.amount).quantize(Decimal("0.0001")),
                 "over_budget": used > budget.amount,
             })
         return result
 
+    def recent_transactions(self, actor_user_id: str, family_id: str, month: Optional[str] = None, limit: int = 5) -> List[dict]:
+        rows = sorted(self._visible_rows(actor_user_id, family_id, month), key=lambda row: row.transaction_time, reverse=True)[:limit]
+        result = []
+        for row in rows:
+            category = self.transaction_service.categories.get(row.category_id)
+            account = self.family_service.accounts.get(row.account_id)
+            result.append({
+                "id": row.id, "type": row.type, "amount": row.amount,
+                "merchant": row.merchant, "description": row.description,
+                "category_id": row.category_id,
+                "category": category.name if category else "未分类",
+                "account_id": row.account_id,
+                "account": account.name if account else "未指定账户",
+                "transfer_to_account_id": row.transfer_to_account_id,
+                "transaction_time": row.transaction_time,
+                "status": row.status,
+            })
+        return result
+
     def home(self, actor_user_id: str, family_id: str, month: Optional[str] = None) -> dict:
+        budgets = self.list_budgets(actor_user_id, family_id, month)
+        total_budget = sum((item["budget"] for item in budgets), Decimal("0.00"))
+        used_budget = sum((item["used"] for item in budgets), Decimal("0.00"))
         return {
             "summary": self.monthly_summary(actor_user_id, family_id, month),
+            "trend": self.trend(actor_user_id, family_id, "day", month),
+            "recent_transactions": self.recent_transactions(actor_user_id, family_id, month),
             "category_ranking": self.category_summary(actor_user_id, family_id, month)[:5],
             "member_ranking": self.member_summary(actor_user_id, family_id, month),
-            "budgets": self.list_budgets(actor_user_id, family_id, month),
+            "budgets": budgets,
+            "budget_summary": {
+                "count": len(budgets),
+                "total": total_budget,
+                "used": used_budget,
+                "remaining": total_budget - used_budget,
+                "usage_ratio": (used_budget / total_budget).quantize(Decimal("0.0001")) if total_budget else Decimal("0.0000"),
+            },
             "quick_actions": ("expense", "income", "transfer"),
         }
 

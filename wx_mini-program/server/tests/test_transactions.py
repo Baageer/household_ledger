@@ -87,3 +87,13 @@ def test_merchant_normalization_is_recorded(services):
     ledger.merchant_rules["美团外卖"] = "美团"
     transaction = ledger.create_transaction(owner.id, family.id, "expense", 56, cash.id, merchant="美团外卖")
     assert transaction.normalized_merchant == "美团"
+
+
+def test_category_update_learns_merchant_rule(services):
+    _, ledger, owner, _, family, cash, _ = services
+    shopping = next(category for category in ledger.categories.values() if category.name == "购物")
+    transaction = ledger.create_transaction(owner.id, family.id, "expense", 30, cash.id, merchant="小王家早餐铺")
+    ledger.update_transaction(owner.id, family.id, transaction.id, category_id=shopping.id)
+    assert ledger.match_category_rule(family.id, "小王家早餐铺") == shopping.id
+    assert ledger.match_category_rule(family.id, "小王家早餐铺(分店)") == shopping.id
+    assert ledger.match_category_rule(family.id, "其他商户") is None

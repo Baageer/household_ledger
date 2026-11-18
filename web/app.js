@@ -22,7 +22,7 @@ const demoTransactions = [
   { id: 'demo-3', merchant: '工资入账', category: '工资', account: '招商银行', time: '8月21日 09:00', amount: 14300, month: '2026-08', icon: '¥', iconClass: 'salary' },
   { id: 'demo-4', merchant: '山姆会员商店', category: '购物', account: '招商银行', time: '8月20日 16:18', amount: -428, month: '2026-08', icon: '◈', iconClass: 'shopping' },
 ];
-const state = { transactions: [...demoTransactions], remote: false, page: 'overview', transactionCategoryFilter: '', editingTransactionId: null, families: [], formOptions: { accounts: [], categories: [] }, budgets: [], importTask: null };
+const state = { transactions: [...demoTransactions], remote: false, page: 'overview', transactionCategoryFilter: '', trendGranularity: 'day', editingTransactionId: null, families: [], formOptions: { accounts: [], categories: [] }, budgets: [], importTask: null };
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
@@ -36,6 +36,86 @@ function showToast(message) {
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
+}
+
+function ratioPercent(value) {
+  const number = Number(value) || 0;
+  return number <= 1 ? number * 100 : number;
+}
+
+function formatTransactionTime(value) {
+  if (!value) return '刚刚';
+  if (typeof value === 'string' && !/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatAxisValue(value) {
+  const number = Number(value) || 0;
+  if (number >= 10000) return `${(number / 10000).toFixed(1)}w`;
+  if (number >= 1000) return `${Math.round(number / 1000)}k`;
+  return String(Math.round(number));
+}
+
+function trendLabel(period) {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(period || '');
+  if (day) return `${Number(day[2])}/${day[3]}`;
+  const week = /^(\d{4})-W(\d{2})$/.exec(period || '');
+  if (week) return `W${week[2]}`;
+  const month = /^(\d{4})-(\d{2})$/.exec(period || '');
+  if (month) return `${Number(month[2])}月`;
+  return period || '';
+}
+
+function renderOverviewTrend(rows) {
+  const chart = document.querySelector('#overview-trend-chart');
+  if (!chart) return;
+  const subtitle = document.querySelector('.trend-panel .panel-heading p');
+  if (subtitle) subtitle.textContent = { day: '本月每日收入与支出变化', week: '本月每周收入与支出变化', month: '本月收入与支出汇总' }[state.trendGranularity] || '本月每日收入与支出变化';
+  const points = (rows || []).map((item) => ({ period: item.period, income: Number(item.income) || 0, expense: Number(item.expense) || 0 }));
+  if (!points.length) {
+    chart.innerHTML = '<p class="subtle trend-empty">本月暂无收支数据</p>';
+    return;
+  }
+  const width = 680;
+  const top = 16;
+  const bottom = 214;
+  const peak = Math.max(...points.flatMap((item) => [item.income, item.expense]), 1);
+  const magnitude = 10 ** Math.floor(Math.log10(peak));
+  const max = Math.ceil(peak / magnitude) * magnitude;
+  const x = (index) => (points.length === 1 ? width / 2 : (index / (points.length - 1)) * width);
+  const y = (value) => bottom - (value / max) * (bottom - top);
+  const pathOf = (key) => points.map((item, index) => `${index === 0 ? 'M' : 'L'}${x(index)} ${y(item[key])}`).join(' ');
+  const incomePath = pathOf('income');
+  const expensePath = pathOf('expense');
+  const areaPath = `${incomePath} L${x(points.length - 1)} ${bottom} L${x(0)} ${bottom} Z`;
+  const grid = [0, 1, 2, 3].map((index) => {
+    const lineY = top + ((bottom - top) * index) / 3;
+    return `<line x1="0" y1="${lineY.toFixed(1)}" x2="${width}" y2="${lineY.toFixed(1)}"/>`;
+  }).join('');
+  const labelIndexes = points.length <= 7 ? points.map((_, index) => index) : Array.from({ length: 7 }, (_, index) => Math.round((index * (points.length - 1)) / 6));
+  const last = points.length - 1;
+  chart.innerHTML = `<div class="chart-axis">${[max, (max * 2) / 3, max / 3, 0].map((value) => `<span>${formatAxisValue(value)}</span>`).join('')}</div><svg viewBox="0 0 680 228" role="img" aria-label="本月收入支出折线图" preserveAspectRatio="none"><defs><linearGradient id="incomeFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#2f7c69" stop-opacity=".18"/><stop offset="100%" stop-color="#2f7c69" stop-opacity="0"/></linearGradient></defs><g class="grid-lines">${grid}</g><path d="${areaPath}" fill="url(#incomeFill)"/><path class="income-line" d="${incomePath}"/><path class="expense-line" d="${expensePath}"/><circle class="active-point" cx="${x(last).toFixed(1)}" cy="${y(points[last].expense).toFixed(1)}" r="5"/></svg><div class="chart-labels">${labelIndexes.map((index) => `<span>${escapeHtml(trendLabel(points[index].period))}</span>`).join('')}</div>`;
+}
+
+function renderOverviewBudgets(budgets, summary) {
+  const list = document.querySelector('.budget-panel .budget-list');
+  const subtitle = document.querySelector('.budget-panel .panel-heading p');
+  if (summary && subtitle) subtitle.textContent = `${summary.count} 个分类正在跟踪`;
+  if (!list) return;
+  if (!budgets.length) {
+    list.innerHTML = '<p class="subtle">本月还没有预算</p>';
+    return;
+  }
+  list.innerHTML = budgets.slice(0, 3).map((item) => {
+    const ratio = Math.min(100, Math.max(0, ratioPercent(item.usage_ratio)));
+    const used = Number(item.used) || 0;
+    const budget = Number(item.budget) || 0;
+    const remaining = Number(item.remaining) || 0;
+    return `<div class="budget-item"><div><span class="budget-name"><i class="category-symbol food-symbol">◒</i>${escapeHtml(item.category || '未分类')}</span><b>¥${formatCurrency(used)} <em>/ ¥${formatCurrency(budget)}</em></b></div><div class="budget-progress ${ratio >= 90 ? 'warning' : ''}"><i style="width:${ratio.toFixed(0)}%"></i></div><p>已使用 ${ratio.toFixed(1)}% <span>${remaining < 0 ? `超支 ¥${formatCurrency(Math.abs(remaining))}` : `剩余 ¥${formatCurrency(remaining)}`}</span></p></div>`;
+  }).join('');
 }
 
 function relatedName(value, id, options, fallback) {
@@ -97,6 +177,37 @@ async function refreshFormOptions() {
 function monthValue() {
   const match = monthSelect.value.match(/(\d{4})年(\d{1,2})月/);
   return match ? `${match[1]}-${String(match[2]).padStart(2, '0')}` : new Date().toISOString().slice(0, 7);
+}
+
+function currentMonthLabel() {
+  const now = new Date();
+  return `${now.getFullYear()}年${now.getMonth() + 1}月`;
+}
+
+function setupMonthOptions(preferred) {
+  const now = new Date();
+  const labels = Array.from({ length: 12 }, (_, offset) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+  });
+  if (preferred && !labels.includes(preferred)) labels.unshift(preferred);
+  const current = preferred || monthSelect.value;
+  monthSelect.innerHTML = labels.map((label) => `<option value="${escapeHtml(label)}">${escapeHtml(label)}</option>`).join('');
+  monthSelect.value = labels.includes(current) ? current : labels[0];
+}
+
+function updatePeriodLabel() {
+  const [year, month] = monthValue().split('-');
+  const monthNumber = Number(month);
+  const eyebrow = document.querySelector('#overview .eyebrow');
+  const note = document.querySelector('#overview .welcome-row .subtle');
+  if (eyebrow) eyebrow.textContent = `${year}年${monthNumber}月 · 账期进行中`;
+  const now = new Date();
+  if (note) {
+    note.textContent = now.getFullYear() === Number(year) && now.getMonth() + 1 === monthNumber
+      ? `${monthNumber}月已经过去 ${now.getDate()} 天，继续保持清晰的家庭财务习惯。`
+      : `${year}年${monthNumber}月的家庭收支回顾。`;
+  }
 }
 
 function setConnectionState(remote) {
@@ -176,26 +287,46 @@ function renderTransactionRows(items, target = transactionList) {
   target.innerHTML = items.map((item) => {
     const amount = Number(item.amount || 0);
     const presentation = transactionPresentation(item);
-    return `<div class="transaction"><span class="transaction-icon ${escapeHtml(item.iconClass || presentation.iconClass)}">${escapeHtml(item.icon || presentation.icon)}</span><div class="transaction-name"><strong>${escapeHtml(item.merchant || item.description || '未命名交易')}</strong><span>${escapeHtml(transactionCategory(item))} · ${escapeHtml(transactionAccount(item))}</span></div><time>${escapeHtml(item.time || item.transaction_time || '刚刚')}</time><b class="amount ${presentation.amountClass}" title="${presentation.label}">${presentation.prefix} ¥${formatCurrency(Math.abs(amount))}</b><button class="more-button" aria-label="更多操作">•••</button></div>`;
+    const moreAction = item.id ? ` data-action="edit-transaction-category" data-transaction-id="${escapeHtml(item.id)}"` : '';
+    return `<div class="transaction"><span class="transaction-icon ${escapeHtml(item.iconClass || presentation.iconClass)}">${escapeHtml(item.icon || presentation.icon)}</span><div class="transaction-name"><strong>${escapeHtml(item.merchant || item.description || '未命名交易')}</strong><span>${escapeHtml(transactionCategory(item))} · ${escapeHtml(transactionAccount(item))}</span></div><time>${escapeHtml(formatTransactionTime(item.time || item.transaction_time))}</time><b class="amount ${presentation.amountClass}" title="${presentation.label}">${presentation.prefix} ¥${formatCurrency(Math.abs(amount))}</b><button class="more-button"${moreAction} aria-label="更多操作">•••</button></div>`;
   }).join('');
 }
 
 function updateDashboard(data) {
   if (!data) return;
+  updatePeriodLabel();
   const summary = data.summary || data;
   const cards = document.querySelectorAll('.summary-card strong');
   if (cards[0] && summary.balance != null) cards[0].textContent = `¥${formatCurrency(summary.balance)}`;
   if (cards[1] && summary.income != null) cards[1].textContent = `¥${formatCurrency(summary.income)}`;
   if (cards[2] && summary.expense != null) cards[2].textContent = `¥${formatCurrency(summary.expense)}`;
+  const budgetSummary = data.budget_summary;
+  if (cards[3] && budgetSummary) {
+    const percent = Math.min(100, Math.max(0, ratioPercent(budgetSummary.usage_ratio)));
+    cards[3].innerHTML = `${percent.toFixed(1)}<small>%</small>`;
+    const budgetCard = cards[3].closest('.summary-card');
+    if (budgetCard) {
+      const note = budgetCard.querySelector('p');
+      if (note) note.innerHTML = `本月预算还剩 <b>¥${formatCurrency(budgetSummary.remaining)}</b>`;
+      const progress = budgetCard.querySelector('.progress-track i');
+      if (progress) progress.style.width = `${percent}%`;
+    }
+  }
+  renderOverviewTrend(data.trend);
   const ranking = data.category_ranking || [];
-  if (ranking.length) {
-    const categoryKey = document.querySelector('.category-key');
-    categoryKey.innerHTML = ranking.slice(0, 4).map((item, index) => `<p><i class="key-dot key-${(index % 4) + 1}"></i><span>${escapeHtml(item.category || item.name)}</span><b>¥${formatCurrency(item.amount)}</b><em>${item.ratio ? `${Number(item.ratio).toFixed(1)}%` : ''}</em></p>`).join('');
+  const categoryKey = document.querySelector('.category-key');
+  if (categoryKey) {
+    categoryKey.innerHTML = ranking.length
+      ? ranking.slice(0, 4).map((item, index) => `<p><i class="key-dot key-${(index % 4) + 1}"></i><span>${escapeHtml(item.category || item.name)}</span><b>¥${formatCurrency(item.amount)}</b><em>${ratioPercent(item.ratio).toFixed(1)}%</em></p>`).join('')
+      : '<p class="subtle">本月暂无支出</p>';
   }
-  if (data.transactions) {
-    state.transactions = data.transactions.items || data.transactions;
-    renderTransactionRows(state.transactions.slice(0, 4));
+  const ringTotal = document.querySelector('.category-ring .ring strong');
+  if (ringTotal && summary.expense != null) ringTotal.textContent = `¥${formatCurrency(summary.expense)}`;
+  if (Array.isArray(data.recent_transactions)) {
+    state.transactions = data.recent_transactions;
+    renderTransactionRows(data.recent_transactions.slice(0, 4));
   }
+  renderOverviewBudgets(data.budgets || [], budgetSummary);
 }
 
 function dashboardVisible(visible) {
@@ -415,6 +546,9 @@ async function loadRemoteData() {
     familySelect.value = ledgerApi.getSession().familyId;
     const data = await ledgerApi.home(monthValue());
     updateDashboard(data);
+    if (state.trendGranularity !== 'day') {
+      try { renderOverviewTrend(await ledgerApi.trend(monthValue(), state.trendGranularity)); } catch (_) {}
+    }
     try {
       await refreshFormOptions();
     } catch (_) { state.formOptions = { accounts: [], categories: [] }; }
@@ -510,15 +644,31 @@ budgetCreateForm.addEventListener('submit', async (event) => {
   try { await ledgerApi.createBudget({ category_id: categoryId, amount }); setBudgetCreateVisible(false); showToast('预算已创建'); await openPage('budgets'); } catch (error) { showToast(error.message); }
 });
 
-document.querySelector('#month-select').addEventListener('change', async () => { state.transactionCategoryFilter = ''; showToast(`已切换至${monthSelect.value}`); await loadRemoteData(); if (state.page !== 'overview') await openPage(state.page); });
+document.querySelector('#month-select').addEventListener('change', async () => { state.transactionCategoryFilter = ''; updatePeriodLabel(); showToast(`已切换至${monthSelect.value}`); await loadRemoteData(); if (state.page !== 'overview') await openPage(state.page); });
 document.querySelector('#family-select').addEventListener('change', async (event) => { localStorage.setItem(ledgerApi.storageKeys.family, event.target.value); showToast('正在切换家庭'); await loadRemoteData(); if (state.page !== 'overview') await openPage(state.page); });
 document.querySelector('#import-button').addEventListener('click', () => { window.location.hash = '#imports'; });
-document.querySelectorAll('.segmented button').forEach((button) => button.addEventListener('click', () => { button.parentElement.querySelector('.active').classList.remove('active'); button.classList.add('active'); showToast(`已切换至按${button.textContent}查看趋势`); }));
+document.querySelectorAll('.segmented button').forEach((button) => button.addEventListener('click', async () => {
+  const granularity = { 日: 'day', 周: 'week', 月: 'month' }[button.textContent.trim()];
+  if (!granularity) return;
+  button.parentElement.querySelector('.active')?.classList.remove('active');
+  button.classList.add('active');
+  state.trendGranularity = granularity;
+  showToast(`已切换至按${button.textContent.trim()}查看趋势`);
+  if (!state.remote) return;
+  try { renderOverviewTrend(await ledgerApi.trend(monthValue(), granularity)); } catch (error) { showToast(error.message); }
+}));
 
 mainContent.addEventListener('click', async (event) => {
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'add') setModalVisible(true);
   if (action === 'edit-transaction-category') openCategoryEditor(event.target.closest('[data-transaction-id]')?.dataset.transactionId);
+  if (action === 'go') {
+    const page = event.target.closest('[data-href]')?.dataset.href;
+    if (page) {
+      if (window.location.hash === `#${page}`) await openPage(page);
+      else window.location.hash = `#${page}`;
+    }
+  }
   if (action === 'logout') { ledgerApi.clearSession(); setConnectionState(false); showToast('已退出当前会话'); await openPage('settings'); }
   if (action === 'new-family') {
     const name = window.prompt('请输入新家庭名称');
@@ -590,6 +740,7 @@ mainContent.addEventListener('submit', async (event) => {
       if (!result.currentFamilyId && result.families?.[0]) { localStorage.setItem(ledgerApi.storageKeys.family, result.families[0].id); }
       showToast('登录成功，正在加载家庭数据');
       if (!result.currentFamilyId && !result.families?.length) { setConnectionState(false); await openPage('family-setup'); return; }
+      setupMonthOptions(currentMonthLabel());
       await loadRemoteData();
       await openPage('overview');
     } catch (error) { showToast(error.message); }
@@ -653,6 +804,7 @@ document.addEventListener('change', async (event) => {
 
 window.addEventListener('hashchange', () => openPage(window.location.hash.slice(1) || 'overview'));
 setConnectionState(Boolean(ledgerApi.getSession().token));
+setupMonthOptions(state.remote ? currentMonthLabel() : '2026年8月');
 renderTransactionRows(state.transactions);
 loadRemoteData();
 openPage(window.location.hash.slice(1) || 'overview');

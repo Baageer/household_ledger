@@ -69,6 +69,23 @@ def test_import_category_backfill_updates_existing_uncategorized_rows(services):
     assert transactions.categories[imported.category_id].name == "其他"
 
 
+def test_import_prefers_learned_merchant_category(services, tmp_path):
+    _, transactions, imports, owner, family, account, _ = services
+    shopping = next(category for category in transactions.categories.values() if category.name == "购物")
+    transaction = transactions.create_transaction(owner.id, family.id, "expense", 18, account.id, merchant="星巴克")
+    transactions.update_transaction(owner.id, family.id, transaction.id, category_id=shopping.id)
+    path = tmp_path / "learned.csv"
+    path.write_text(
+        "交易时间,交易对方,金额,收支,交易单号,备注\n"
+        "2026-08-06 09:00,星巴克,-25,支出,learned-1,咖啡\n",
+        encoding="utf-8",
+    )
+    task = imports.create_task(owner.id, family.id, path, "alipay", account.id)
+    row = imports.preview(owner.id, task.id)["rows"][0]
+    assert transactions.categories[row.category_id].name == "购物"
+    assert row.confidence == 0.99
+
+
 def test_transfer_direction_distinguishes_internal_and_external_flows(services, tmp_path):
     families, transactions, imports, owner, family, account, _ = services
     bank = families.create_account(owner.id, family.id, "招商银行", "bank")

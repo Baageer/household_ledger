@@ -79,6 +79,7 @@ class TransactionService:
         self.transactions: Dict[str, Transaction] = {}
         self.categories: Dict[str, Category] = {}
         self.merchant_rules = {self._normalize_text(k): v.strip() for k, v in (merchant_rules or {}).items()}
+        self.category_rules: Dict[str, Dict[str, str]] = {}
         self._seed_system_categories()
 
     def _seed_system_categories(self) -> None:
@@ -187,6 +188,30 @@ class TransactionService:
                 return standard
         return merchant.strip()
 
+    def learn_category_rule(self, family_id: str, merchant: str, category_id: Optional[str]) -> None:
+        """记录用户对商户分类的选择，供同一家庭后续导入优先命中。"""
+        key = self._normalize_text(self.normalize_merchant(merchant))
+        if not key or not category_id:
+            return
+        category = self.categories.get(category_id)
+        if not category or category.status != "active" or category.family_id not in ("*", family_id):
+            return
+        self.category_rules.setdefault(family_id, {})[key] = category_id
+
+    def match_category_rule(self, family_id: str, merchant: str) -> Optional[str]:
+        """返回该家庭为商户学习到的分类；先精确匹配，再按最长关键词匹配相似商户。"""
+        rules = self.category_rules.get(family_id)
+        key = self._normalize_text(self.normalize_merchant(merchant))
+        if not rules or not key:
+            return None
+        matches = [key] if key in rules else []
+        matches.extend(rule_key for rule_key in rules if len(rule_key) >= 2 and rule_key != key and rule_key in key)
+        for rule_key in sorted(matches, key=len, reverse=True):
+            category = self.categories.get(rules[rule_key])
+            if category and category.status == "active":
+                return category.id
+        return None
+
     def find_transfer_candidates(
         self, actor_user_id: str, family_id: str, account_id: str,
         amount: object, transaction_time: datetime, window_minutes: int = 24 * 60
@@ -258,6 +283,8 @@ class TransactionService:
             if not isinstance(when, datetime):
                 raise FamilyError("交易时间必须是 datetime")
             transaction.transaction_time = when if when.tzinfo else when.replace(tzinfo=timezone.utc)
+        if "category_id" in changes and transaction.category_id:
+            self.learn_category_rule(family_id, transaction.merchant, transaction.category_id)
         transaction.updated_at = _now()
         return transaction
 

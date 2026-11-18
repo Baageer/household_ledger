@@ -63,10 +63,12 @@ D:\Anaconda3\envs\llm\python.exe -m uvicorn main:app
 ```powershell
 Set-Location server
 $env:PYTHONPATH = "."
-D:\Anaconda3\envs\llm\python.exe -m uvicorn main:app --reload
+$env:DATABASE_URL = "sqlite:///./ledger.db"
+$env:AUTO_CREATE_DB = "true"
+D:\ProgramData\miniconda3\envs\llm\python.exe -m uvicorn main:app --reload
 ```
 
-服务使用进程内存储，仅用于本地联调；重启后数据会清空。登录接口返回的 `token` 和 `currentFamilyId` 可直接写入小程序会话。
+`DATABASE_URL` 未设置时使用进程内存储，重启后数据会清空。设置 `sqlite:///./ledger.db` 后，用户、家庭、账户、交易、预算、导入数据和登录会话会写入 `server/ledger.db`，重启服务后自动恢复；删除该文件即可重置本地数据。
 
 前端页面位于 `../miniprogram`，使用微信开发者工具打开 `wx_mini-program` 目录即可预览。部署联调前，将 `miniprogram/app.js` 中的 `apiBaseUrl` 替换为实际 HTTPS API 地址。
 

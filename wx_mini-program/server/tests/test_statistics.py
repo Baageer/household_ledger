@@ -34,8 +34,17 @@ def test_monthly_category_member_and_home_statistics(services):
     assert summary["balance"] == Decimal("860.00")
     assert stats.category_summary(owner.id, family.id, "2026-08")[0]["ratio"] == Decimal("1.0000")
     assert stats.member_summary(owner.id, family.id, "2026-08")[0]["amount"] == Decimal("100.00")
+    stats.create_budget(owner.id, family.id, category.id, "200")
     home = stats.home(owner.id, family.id, "2026-08")
     assert home["summary"]["expense"] == Decimal("140.00")
+    assert len(home["trend"]) == 3
+    assert [item["amount"] for item in home["recent_transactions"]] == [Decimal("40.00"), Decimal("100.00"), Decimal("1000.00")]
+    assert home["recent_transactions"][0]["category"] == category.name
+    assert home["budget_summary"]["count"] == 1
+    assert home["budget_summary"]["total"] == Decimal("200.00")
+    assert home["budget_summary"]["used"] == Decimal("140.00")
+    assert home["budget_summary"]["remaining"] == Decimal("60.00")
+    assert home["budget_summary"]["usage_ratio"] == Decimal("0.7000")
     assert home["quick_actions"] == ("expense", "income", "transfer")
 
 

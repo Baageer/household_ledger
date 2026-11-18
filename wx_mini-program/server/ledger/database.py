@@ -164,6 +164,14 @@ class ImportTransactionModel(Base):
     transaction_id: Mapped[Optional[str]] = mapped_column(ForeignKey("transactions.id"))
 
 
+class MerchantCategoryRuleModel(Base):
+    __tablename__ = "merchant_category_rules"
+    family_id: Mapped[str] = mapped_column(ForeignKey("families.id", ondelete="CASCADE"), primary_key=True)
+    normalized_merchant: Mapped[str] = mapped_column(String(200), primary_key=True)
+    category_id: Mapped[str] = mapped_column(ForeignKey("categories.id"), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+
+
 class SessionModel(Base):
     __tablename__ = "sessions"
     token_hash: Mapped[str] = mapped_column(String(128), primary_key=True)
@@ -222,4 +230,4 @@ class Database:
             db.close()
 
 
-__all__ = ["Base", "Database", "UserModel", "FamilyModel", "FamilyMemberModel", "AccountModel", "CategoryModel", "TransactionModel", "BudgetModel", "ImportTaskModel", "ImportTransactionModel", "SessionModel", "AuditLogModel"]
+__all__ = ["Base", "Database", "UserModel", "FamilyModel", "FamilyMemberModel", "AccountModel", "CategoryModel", "TransactionModel", "BudgetModel", "ImportTaskModel", "ImportTransactionModel", "MerchantCategoryRuleModel", "SessionModel", "AuditLogModel"]

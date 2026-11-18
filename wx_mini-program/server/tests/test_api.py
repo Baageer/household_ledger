@@ -3,16 +3,16 @@ import base64
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app, families, sessions, transactions
+from main import app, families, session_expiry, sessions, transactions
 
 
 @pytest.fixture(autouse=True)
 def reset_state():
     families.users.clear(); families.users_by_openid.clear(); families.families.clear(); families.members.clear(); families.accounts.clear(); families.invitations.clear()
     transactions.transactions.clear()
-    sessions.clear()
+    sessions.clear(); session_expiry.clear()
     yield
-    sessions.clear()
+    sessions.clear(); session_expiry.clear()
 
 
 @pytest.fixture

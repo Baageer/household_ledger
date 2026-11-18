@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20261118" />
   </head>
   <body>
     <div class="app-shell">
@@ -73,20 +73,20 @@
           <article class="panel trend-panel" id="analytics">
             <div class="panel-heading"><div><h3>收支趋势</h3><p>本月每日收入与支出变化</p></div><div class="segmented" role="group" aria-label="趋势维度"><button class="active">日</button><button>周</button><button>月</button></div></div>
             <div class="chart-legend"><span><i class="legend income-dot"></i>收入</span><span><i class="legend expense-dot"></i>支出</span></div>
-            <div class="line-chart" aria-label="收入与支出趋势图">
+            <div class="line-chart" id="overview-trend-chart" aria-label="收入与支出趋势图">
               <div class="chart-axis"><span>30k</span><span>20k</span><span>10k</span><span>0</span></div>
               <svg viewBox="0 0 680 228" role="img" aria-label="八月收入支出折线图" preserveAspectRatio="none"><defs><linearGradient id="incomeFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#2f7c69" stop-opacity=".18"/><stop offset="100%" stop-color="#2f7c69" stop-opacity="0"/></linearGradient></defs><g class="grid-lines"><line x1="0" y1="16" x2="680" y2="16"/><line x1="0" y1="82" x2="680" y2="82"/><line x1="0" y1="148" x2="680" y2="148"/><line x1="0" y1="214" x2="680" y2="214"/></g><path d="M0 142 C29 139,37 114,61 128 S99 114,122 116 S162 135,184 108 S220 114,245 99 S286 132,309 114 S341 80,370 90 S410 108,432 82 S470 97,493 69 S528 80,555 45 S595 60,618 54 S650 35,680 47 L680 214 L0 214 Z" fill="url(#incomeFill)"/><path class="income-line" d="M0 142 C29 139,37 114,61 128 S99 114,122 116 S162 135,184 108 S220 114,245 99 S286 132,309 114 S341 80,370 90 S410 108,432 82 S470 97,493 69 S528 80,555 45 S595 60,618 54 S650 35,680 47"/><path class="expense-line" d="M0 174 C28 166,39 178,62 166 S102 154,123 164 S161 143,184 152 S220 140,246 150 S278 124,308 143 S339 134,369 145 S402 127,432 134 S470 111,493 123 S526 132,555 106 S589 117,618 94 S652 115,680 85"/><circle class="active-point" cx="555" cy="45" r="5"/></svg>
               <div class="chart-labels"><span>8/01</span><span>8/05</span><span>8/10</span><span>8/15</span><span>8/20</span><span>8/25</span><span>8/31</span></div>
             </div>
           </article>
 
-          <article class="panel category-panel"><div class="panel-heading"><div><h3>支出分类</h3><p>本月支出占比</p></div><button class="text-button">查看全部 →</button></div><div class="category-ring"><div class="ring"><div><strong>¥12,860</strong><span>总支出</span></div></div><div class="category-key"><p><i class="key-dot key-1"></i><span>餐饮</span><b>¥3,620</b><em>28.1%</em></p><p><i class="key-dot key-2"></i><span>住房</span><b>¥3,100</b><em>24.1%</em></p><p><i class="key-dot key-3"></i><span>购物</span><b>¥2,180</b><em>17.0%</em></p><p><i class="key-dot key-4"></i><span>其他</span><b>¥3,960</b><em>30.8%</em></p></div></div></article>
+          <article class="panel category-panel"><div class="panel-heading"><div><h3>支出分类</h3><p>本月支出占比</p></div><button class="text-button" data-action="go" data-href="analytics">查看全部 →</button></div><div class="category-ring"><div class="ring"><div><strong>¥12,860</strong><span>总支出</span></div></div><div class="category-key"><p><i class="key-dot key-1"></i><span>餐饮</span><b>¥3,620</b><em>28.1%</em></p><p><i class="key-dot key-2"></i><span>住房</span><b>¥3,100</b><em>24.1%</em></p><p><i class="key-dot key-3"></i><span>购物</span><b>¥2,180</b><em>17.0%</em></p><p><i class="key-dot key-4"></i><span>其他</span><b>¥3,960</b><em>30.8%</em></p></div></div></article>
         </section>
 
         <section class="lower-grid">
-          <article class="panel transactions-panel" id="transactions"><div class="panel-heading"><div><h3>最近账单</h3><p>最近发生的家庭收支</p></div><button class="text-button">查看全部 →</button></div><div class="transaction-list" id="transaction-list"><div class="transaction"><span class="transaction-icon food">♨</span><div class="transaction-name"><strong>盒马鲜生</strong><span>餐饮 · 微信支付</span></div><time>今天 10:24</time><b class="amount expense-amount">- ¥168.00</b><button class="more-button" aria-label="盒马鲜生更多操作">•••</button></div><div class="transaction"><span class="transaction-icon transport">◉</span><div class="transaction-name"><strong>滴滴出行</strong><span>交通 · 支付宝</span></div><time>昨天 20:46</time><b class="amount expense-amount">- ¥36.50</b><button class="more-button" aria-label="滴滴出行更多操作">•••</button></div><div class="transaction"><span class="transaction-icon salary">¥</span><div class="transaction-name"><strong>工资入账</strong><span>工资 · 招商银行</span></div><time>8月21日 09:00</time><b class="amount income-amount">+ ¥14,300.00</b><button class="more-button" aria-label="工资入账更多操作">•••</button></div><div class="transaction"><span class="transaction-icon shopping">◈</span><div class="transaction-name"><strong>山姆会员商店</strong><span>购物 · 招商银行</span></div><time>8月20日 16:18</time><b class="amount expense-amount">- ¥428.00</b><button class="more-button" aria-label="山姆会员商店更多操作">•••</button></div></div></article>
+          <article class="panel transactions-panel" id="transactions"><div class="panel-heading"><div><h3>最近账单</h3><p>最近发生的家庭收支</p></div><button class="text-button" data-action="go" data-href="transactions">查看全部 →</button></div><div class="transaction-list" id="transaction-list"><div class="transaction"><span class="transaction-icon food">♨</span><div class="transaction-name"><strong>盒马鲜生</strong><span>餐饮 · 微信支付</span></div><time>今天 10:24</time><b class="amount expense-amount">- ¥168.00</b><button class="more-button" aria-label="盒马鲜生更多操作">•••</button></div><div class="transaction"><span class="transaction-icon transport">◉</span><div class="transaction-name"><strong>滴滴出行</strong><span>交通 · 支付宝</span></div><time>昨天 20:46</time><b class="amount expense-amount">- ¥36.50</b><button class="more-button" aria-label="滴滴出行更多操作">•••</button></div><div class="transaction"><span class="transaction-icon salary">¥</span><div class="transaction-name"><strong>工资入账</strong><span>工资 · 招商银行</span></div><time>8月21日 09:00</time><b class="amount income-amount">+ ¥14,300.00</b><button class="more-button" aria-label="工资入账更多操作">•••</button></div><div class="transaction"><span class="transaction-icon shopping">◈</span><div class="transaction-name"><strong>山姆会员商店</strong><span>购物 · 招商银行</span></div><time>8月20日 16:18</time><b class="amount expense-amount">- ¥428.00</b><button class="more-button" aria-label="山姆会员商店更多操作">•••</button></div></div></article>
 
-          <article class="panel budget-panel" id="budgets"><div class="panel-heading"><div><h3>本月预算</h3><p>4 个分类正在跟踪</p></div><button class="text-button">管理 →</button></div><div class="budget-list"><div class="budget-item"><div><span class="budget-name"><i class="category-symbol food-symbol">♨</i>餐饮</span><b>¥2,580 <em>/ ¥3,000</em></b></div><div class="budget-progress"><i style="width:86%"></i></div><p>已使用 86% <span>剩余 ¥420</span></p></div><div class="budget-item"><div><span class="budget-name"><i class="category-symbol shopping-symbol">◈</i>购物</span><b>¥2,180 <em>/ ¥2,500</em></b></div><div class="budget-progress warning"><i style="width:87%"></i></div><p>已使用 87% <span>剩余 ¥320</span></p></div><div class="budget-item"><div><span class="budget-name"><i class="category-symbol home-symbol">⌂</i>住房</span><b>¥3,100 <em>/ ¥4,500</em></b></div><div class="budget-progress"><i style="width:69%"></i></div><p>已使用 69% <span>剩余 ¥1,400</span></p></div></div></article>
+          <article class="panel budget-panel" id="budgets"><div class="panel-heading"><div><h3>本月预算</h3><p>4 个分类正在跟踪</p></div><button class="text-button" data-action="go" data-href="budgets">管理 →</button></div><div class="budget-list"><div class="budget-item"><div><span class="budget-name"><i class="category-symbol food-symbol">♨</i>餐饮</span><b>¥2,580 <em>/ ¥3,000</em></b></div><div class="budget-progress"><i style="width:86%"></i></div><p>已使用 86% <span>剩余 ¥420</span></p></div><div class="budget-item"><div><span class="budget-name"><i class="category-symbol shopping-symbol">◈</i>购物</span><b>¥2,180 <em>/ ¥2,500</em></b></div><div class="budget-progress warning"><i style="width:87%"></i></div><p>已使用 87% <span>剩余 ¥320</span></p></div><div class="budget-item"><div><span class="budget-name"><i class="category-symbol home-symbol">⌂</i>住房</span><b>¥3,100 <em>/ ¥4,500</em></b></div><div class="budget-progress"><i style="width:69%"></i></div><p>已使用 69% <span>剩余 ¥1,400</span></p></div></div></article>
         </section>
       </main>
     </div>
@@ -122,7 +122,7 @@
         <div class="budget-dialog-actions"><button class="button button-secondary" type="button" data-budget-action="delete">删除预算</button><button class="button button-primary" type="button" data-budget-action="save">保存修改</button></div>
       </section>
     </div>
-    <script src="api.js"></script>
-    <script src="app.js"></script>
+    <script src="api.js?v=20261118"></script>
+    <script src="app.js?v=20261118"></script>
   </body>
 </html>

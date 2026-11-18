@@ -189,7 +189,7 @@ class ImportService:
         for transaction in self.transaction_service.transactions.values():
             if transaction.category_id is not None or transaction.source not in ("alipay", "wechat") or transaction.type == "transfer":
                 continue
-            category_name, _ = self._classify(transaction.merchant, transaction.description, transaction.type)
+            category_name, _ = self._classify(transaction.family_id, transaction.merchant, transaction.description, transaction.type)
             category_id = self._category_id(transaction.family_id, category_name)
             if category_id:
                 transaction.category_id = category_id
@@ -265,7 +265,7 @@ class ImportService:
                     row.direction = self._direction(direction_text, signed_amount)
                 row.transaction_hash = self.transaction_service._transaction_hash(task.family_id, task.source, row.account_id or task.account_id or "", row.transaction_time, row.amount, self.transaction_service.normalize_merchant(row.merchant))
                 row.duplicate = self._is_duplicate(task, row)
-                category, row.confidence = self._classify(row.merchant, row.description, row.direction)
+                category, row.confidence = self._classify(task.family_id, row.merchant, row.description, row.direction)
                 row.category_id = self._category_id(task.family_id, category)
                 if row.duplicate:
                     row.status = "duplicate"
@@ -290,11 +290,16 @@ class ImportService:
                 return column
         return None
 
-    def _classify(self, merchant: str, description: str, direction: str) -> tuple[str, float]:
+    def _classify(self, family_id: str, merchant: str, description: str, direction: str) -> tuple[str, float]:
         if direction == "transfer":
             return "转账", 1.0
         if direction == "neutral":
             return "不计收支", 1.0
+        learned = self.transaction_service.match_category_rule(family_id, merchant)
+        if learned:
+            category = self.transaction_service.categories.get(learned)
+            if category:
+                return category.name, 0.99
         if direction == "income":
             if "退款" in merchant or "退款" in description:
                 return "退款", 0.99
